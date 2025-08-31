@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>求職者情報入力フォーム - 人材紹介システム</title>
+    <style>
+        :root {
+            --primary-blue: #2563eb;
+            --secondary-blue: #1d4ed8;
+            --light-blue: #3b82f6;
+            --accent-blue: #0ea5e9;
+            --bg-blue: #eff6ff;
+            --bg-white: #ffffff;
+            --bg-gray: #f8fafc;
+            --text-dark: #1e293b;
+            --text-gray: #64748b;
+            --border-gray: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-gray);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+        .container {
+            max-width: 760px;
+            margin: 0 auto;
+            background: var(--bg-white);
+            border: 1px solid var(--border-gray);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(45deg, var(--primary-blue), var(--secondary-blue));
+            color: white;
+            padding: 28px 30px;
+            text-align: center;
+        }
+        .form-content { padding: 28px 30px; }
+        .form-group { margin-bottom: 20px; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        .required { color: var(--danger); }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border-gray);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--bg-white);
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+        }
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--bg-blue);
+            border: 1px solid #bfdbfe;
+            color: var(--text-dark);
+            border-radius: 10px;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        .checkbox-item:hover { border-color: var(--primary-blue); }
+        .checkbox-item input[type="checkbox"] { width: auto; margin: 0; }
+        .priority-section {
+            background: var(--bg-blue);
+            border: 1px solid #bfdbfe;
+            padding: 18px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .pref-selects { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        @media (min-width: 600px) { .pref-selects { grid-template-columns: repeat(3, 1fr); } }
+        .submit-btn {
+            background: linear-gradient(45deg, var(--primary-blue), var(--secondary-blue));
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(37,99,235,0.25);
+        }
+        .result-area {
+            margin-top: 24px;
+            padding: 18px;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            border-radius: 10px;
+            display: none;
+        }
+        .file-upload {
+            border: 2px dashed var(--primary-blue);
+            background: var(--bg-blue);
+        }
+        .file-upload:hover { background: #e0efff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 求職者情報入力フォーム</h1>
+            <p>転職条件を詳しく教えてください</p>
+        </div>
+        
+        <div class="form-content">
+            <form id="jobSeekerForm">
+                <div class="form-group">
+                    <label for="name">氏名 <span class="required">*</span></label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">メールアドレス <span class="required">*</span></label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="experience">現在の職種・経験年数</label>
+                    <input type="text" id="experience" name="experience" placeholder="例：Webデザイナー、5年">
+                </div>
+                
+                <div class="form-group">
+                    <label>希望職種 <span class="required">*</span></label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="jobTypes" value="営業">
+                            <label>営業</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="jobTypes" value="マーケティング">
+                            <label>マーケティング</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="jobTypes" value="エンジニア">
+                            <label>エンジニア</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="jobTypes" value="デザイナー">
+                            <label>デザイナー</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="jobTypes" value="企画">
+                            <label>企画</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="jobTypes" value="管理職">
+                            <label>管理職</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="salary">希望年収（万円）</label>
+                    <select id="salary" name="salary">
+                        <option value="">選択してください</option>
+                        <option value="300-400">300-400万円</option>
+                        <option value="400-500">400-500万円</option>
+                        <option value="500-600">500-600万円</option>
+                        <option value="600-700">600-700万円</option>
+                        <option value="700-800">700-800万円</option>
+                        <option value="800+">800万円以上</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>希望勤務地（最大3つ、1つ目は必須）</label>
+                    <div class="pref-selects">
+                        <select id="location1" required>
+                            <option value="">選択してください</option>
+                            <option>北海道</option><option>青森</option><option>岩手</option><option>宮城</option><option>秋田</option><option>山形</option><option>福島</option><option>茨城</option><option>栃木</option><option>群馬</option><option>埼玉</option><option>千葉</option><option>東京</option><option>神奈川</option><option>新潟</option><option>富山</option><option>石川</option><option>福井</option><option>山梨</option><option>長野</option><option>岐阜</option><option>静岡</option><option>愛知</option><option>三重</option><option>滋賀</option><option>京都</option><option>大阪</option><option>兵庫</option><option>奈良</option><option>和歌山</option><option>鳥取</option><option>島根</option><option>岡山</option><option>広島</option><option>山口</option><option>徳島</option><option>香川</option><option>愛媛</option><option>高知</option><option>福岡</option><option>佐賀</option><option>長崎</option><option>熊本</option><option>大分</option><option>宮崎</option><option>鹿児島</option><option>沖縄</option>
+                        </select>
+                        <select id="location2">
+                            <option value="">選択しない</option>
+                            <option>北海道</option><option>青森</option><option>岩手</option><option>宮城</option><option>秋田</option><option>山形</option><option>福島</option><option>茨城</option><option>栃木</option><option>群馬</option><option>埼玉</option><option>千葉</option><option>東京</option><option>神奈川</option><option>新潟</option><option>富山</option><option>石川</option><option>福井</option><option>山梨</option><option>長野</option><option>岐阜</option><option>静岡</option><option>愛知</option><option>三重</option><option>滋賀</option><option>京都</option><option>大阪</option><option>兵庫</option><option>奈良</option><option>和歌山</option><option>鳥取</option><option>島根</option><option>岡山</option><option>広島</option><option>山口</option><option>徳島</option><option>香川</option><option>愛媛</option><option>高知</option><option>福岡</option><option>佐賀</option><option>長崎</option><option>熊本</option><option>大分</option><option>宮崎</option><option>鹿児島</option><option>沖縄</option>
+                        </select>
+                        <select id="location3">
+                            <option value="">選択しない</option>
+                            <option>北海道</option><option>青森</option><option>岩手</option><option>宮城</option><option>秋田</option><option>山形</option><option>福島</option><option>茨城</option><option>栃木</option><option>群馬</option><option>埼玉</option><option>千葉</option><option>東京</option><option>神奈川</option><option>新潟</option><option>富山</option><option>石川</option><option>福井</option><option>山梨</option><option>長野</option><option>岐阜</option><option>静岡</option><option>愛知</option><option>三重</option><option>滋賀</option><option>京都</option><option>大阪</option><option>兵庫</option><option>奈良</option><option>和歌山</option><option>鳥取</option><option>島根</option><option>岡山</option><option>広島</option><option>山口</option><option>徳島</option><option>香川</option><option>愛媛</option><option>高知</option><option>福岡</option><option>佐賀</option><option>長崎</option><option>熊本</option><option>大分</option><option>宮崎</option><option>鹿児島</option><option>沖縄</option>
+                        </select>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <label for="specificCity">詳細希望地域（市区町村・駅など）</label>
+                        <input type="text" id="specificCity" name="specificCity" placeholder="例：渋谷区、梅田、博多駅周辺など">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="weekendOff">土日休み希望</label>
+                    <select id="weekendOff" name="weekendOff">
+                        <option value="こだわらない">こだわらない</option>
+                        <option value="あり">あり</option>
+                        <option value="なし">なし</option>
+                    </select>
+                </div>
+
+                
+                
+                <div class="priority-section">
+                    <h3>🎯 重要度ランキング</h3>
+                    <p>以下の項目を重要順に並べてください</p>
+                    
+                    <div class="form-group">
+                        <label for="priority1">最重要項目</label>
+                        <select id="priority1" name="priority1">
+                            <option value="">選択してください</option>
+                            <option value="年収">年収</option>
+                            <option value="勤務地">勤務地</option>
+                            <option value="休日">休日・休暇</option>
+                            <option value="職種">職種・業務内容</option>
+                            <option value="会社規模">会社規模</option>
+                            <option value="成長性">会社の成長性</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="priority2">2番目に重要</label>
+                        <select id="priority2" name="priority2">
+                            <option value="">選択してください</option>
+                            <option value="年収">年収</option>
+                            <option value="勤務地">勤務地</option>
+                            <option value="休日">休日・休暇</option>
+                            <option value="職種">職種・業務内容</option>
+                            <option value="会社規模">会社規模</option>
+                            <option value="成長性">会社の成長性</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="priority3">3番目に重要</label>
+                        <select id="priority3" name="priority3">
+                            <option value="">選択してください</option>
+                            <option value="年収">年収</option>
+                            <option value="勤務地">勤務地</option>
+                            <option value="休日">休日・休暇</option>
+                            <option value="職種">職種・業務内容</option>
+                            <option value="会社規模">会社規模</option>
+                            <option value="成長性">会社の成長性</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="requirements">絶対に外せない条件</label>
+                    <textarea id="requirements" name="requirements" rows="3" placeholder="例：土日祝日休み、リモートワーク可能、年収450万円以上"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">その他・備考</label>
+                    <textarea id="notes" name="notes" rows="3" placeholder="転職理由や希望などを自由にお書きください"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>📄 履歴書・職務経歴書のアップロード</label>
+                    <div class="file-upload" style="padding:16px; border-radius:8px;">
+                        <p style="margin:0 0 8px 0; color: var(--text-gray);">履歴書（PDF/Word/画像）</p>
+                        <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="showFileName(this, 'resumeFileName')">
+                        <div id="resumeFileName" style="margin-top: 8px; font-weight: 600; color: var(--primary-blue);"></div>
+                    </div>
+                    <div class="file-upload" style="padding:16px; border-radius:8px; margin-top:12px;">
+                        <p style="margin:0 0 8px 0; color: var(--text-gray);">職務経歴書（PDF/Word/画像）</p>
+                        <input type="file" id="jobHistory" name="jobHistory" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="showFileName(this, 'jobHistoryFileName')">
+                        <div id="jobHistoryFileName" style="margin-top: 8px; font-weight: 600; color: var(--primary-blue);"></div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn">📋 情報を登録する</button>
+            </form>
+            
+            <div id="resultArea" class="result-area">
+                <h3>✅ 登録完了！</h3>
+                <div id="resultContent"></div>
+            </div>
+
+            
+        </div>
+    </div>
+    
+    <!-- 設定ファイルとGAS連携ライブラリ -->
+    <script src="config.js"></script>
+    <script src="gas-connector.js"></script>
+    <script src="gas-form-submit.js"></script>
+    
+    <script>
+        // 設定から GAS URL を取得
+        const GAS_URL = GASUtils.getGASUrl();
+        const gasConnector = new GASConnector(GAS_URL);
+        const formSubmitter = new GASFormSubmitter(GAS_URL);
+        
+        document.getElementById('jobSeekerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                // 進捗表示
+                GASUtils.showProgress('求職者データを保存中...');
+                
+                // フォームデータを取得
+                const formData = new FormData(this);
+                const data = {};
+                
+                // テキスト入力を取得
+                for (let [key, value] of formData.entries()) {
+                    if (data[key]) {
+                        if (Array.isArray(data[key])) {
+                            data[key].push(value);
+                        } else {
+                            data[key] = [data[key], value];
+                        }
+                    } else {
+                        data[key] = value;
+                    }
+                }
+                
+                // 希望職種（チェックボックス）
+                const jobTypes = Array.from(document.querySelectorAll('input[name="jobTypes"]:checked')).map(cb => cb.value);
+                data.jobTypes = jobTypes;
+
+                // 希望勤務地（プルダウン×3）
+                const locs = [
+                    document.getElementById('location1')?.value || '',
+                    document.getElementById('location2')?.value || '',
+                    document.getElementById('location3')?.value || ''
+                ].filter(v => v && v.trim() !== '');
+                const uniqLocs = Array.from(new Set(locs));
+                data.locations = uniqLocs;
+                
+                // GAS用データに変換
+                const gasData = GASUtils.convertFormDataForGAS(data, 'jobSeeker');
+                
+                // 追加のマッピング（このフォーム特有のフィールド）
+                gasData.desiredIndustry = data.jobTypes ? data.jobTypes.join(', ') : '';
+                gasData.desiredLocation = Array.isArray(data.locations) ? data.locations.join(', ') : (data.locations || '');
+                gasData.specificCity = data.specificCity || '';
+                gasData.weekendOff = data.weekendOff || '';
+                // 年間休日は項目廃止のため未送信
+                gasData.desiredSalary = data.salary || '';
+                // 優先度を個別列にも保存
+                gasData.priority1 = data.priority1 || '';
+                gasData.priority2 = data.priority2 || '';
+                gasData.priority3 = data.priority3 || '';
+                gasData.priority = `1位:${gasData.priority1}, 2位:${gasData.priority2}, 3位:${gasData.priority3}`;
+                gasData.requirements = data.requirements || '';
+                gasData.notes = data.notes || '';
+
+                // 「現在の職種・経験年数」から分解（例: "Webデザイナー、5年"）
+                const expText = data.experience || '';
+                // 全角数字を半角に
+                const z2h = (s) => s.replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0));
+                const expNorm = z2h(expText);
+                const yearsMatch = expNorm.match(/([0-9]+)\s*年/);
+                if (yearsMatch) {
+                    gasData.experience = `${yearsMatch[1]}年`;
+                } else if (gasData.experience == null) {
+                    gasData.experience = expText; // そのまま
+                }
+                // 職種名（読点/カンマ/スペースで分割）
+                const pos = expNorm.split(/[、,\s]/)[0].trim();
+                if (pos) gasData.currentPosition = pos;
+                
+                console.log('送信データ:', gasData);
+                
+                // ファイル名取得
+                const resumeFile = document.getElementById('resume')?.files?.[0];
+                const jobHistoryFile = document.getElementById('jobHistory')?.files?.[0];
+                data.resumeFile = resumeFile ? resumeFile.name : '';
+                data.jobHistoryFile = jobHistoryFile ? jobHistoryFile.name : '';
+                
+                // スプレッドシートに保存（CORS回避版）
+                try {
+                    const result = await gasConnector.saveJobSeeker(gasData);
+                    console.log('CORS成功:', result);
+                    GASUtils.showProgress('求職者データの保存が完了しました！');
+                    displayResult(data, result);
+                } catch (corsError) {
+                    console.warn('CORS失敗、フォーム送信で再試行:', corsError);
+                    GASUtils.showProgress('フォーム送信で再試行中...');
+                    
+                    // CORS失敗時はフォーム送信で再試行
+                    const formResult = await formSubmitter.submitData('saveJobSeeker', gasData);
+                    console.log('フォーム送信成功:', formResult);
+                    GASUtils.showProgress('求職者データの保存が完了しました（フォーム送信）！');
+                    displayResult(data, formResult);
+                }
+                
+                // アクティビティログ記録（フォーム送信版）
+                try {
+                    await formSubmitter.submitData('logActivity', {
+                        action: '求職者フォーム送信',
+                        details: `求職者「${data.name}」がフォームから登録`,
+                        userId: 'web-form',
+                        url: window.location.href
+                    });
+                } catch (logError) {
+                    console.warn('ログ記録は省略:', logError);
+                }
+                
+            } catch (error) {
+                console.error('データ保存エラー:', error);
+                GASUtils.showError(error);
+                
+                // エラーでも結果は表示（ローカル確認用）
+                displayResult(data, null, error.message);
+            }
+        });
+        
+        function displayResult(data, gasResult = null, error = null) {
+            const resultArea = document.getElementById('resultArea');
+            const resultContent = document.getElementById('resultContent');
+            
+            let html = `
+                <p><strong>氏名:</strong> ${data.name || '未入力'}</p>
+                <p><strong>メール:</strong> ${data.email || '未入力'}</p>
+                <p><strong>経験:</strong> ${data.experience || '未入力'}</p>
+                <p><strong>希望職種:</strong> ${data.jobTypes && data.jobTypes.length > 0 ? data.jobTypes.join(', ') : '未選択'}</p>
+                <p><strong>希望年収:</strong> ${data.salary || '未選択'}</p>
+                <p><strong>勤務地:</strong> ${data.locations && data.locations.length > 0 ? data.locations.join(', ') : '未選択'}</p>
+                <p><strong>優先度:</strong></p>
+                <ul>
+                    <li>1位: ${data.priority1 || '未選択'}</li>
+                    <li>2位: ${data.priority2 || '未選択'}</li>
+                    <li>3位: ${data.priority3 || '未選択'}</li>
+                </ul>
+                <p><strong>必須条件:</strong> ${data.requirements || '未入力'}</p>
+                <p><strong>備考:</strong> ${data.notes || '未入力'}</p>
+            `;
+            
+            // スプレッドシート保存結果を表示
+            if (gasResult) {
+                html += `
+                    <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                        <h4>📊 スプレッドシート保存完了</h4>
+                        <p><strong>保存完了:</strong> ${gasResult.message}</p>
+                        <p><strong>総行数:</strong> ${gasResult.rowCount}行</p>
+                        <p><strong>登録名:</strong> ${gasResult.name}</p>
+                    </div>
+                `;
+            } else if (error) {
+                html += `
+                    <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                        <h4>⚠️ 保存エラー</h4>
+                        <p>スプレッドシートへの保存中にエラーが発生しました：</p>
+                        <p><strong>エラー詳細:</strong> ${error}</p>
+                        <p>※フォームデータは上記に表示されています。管理者にお問い合わせください。</p>
+                    </div>
+                `;
+            }
+            
+            resultContent.innerHTML = html;
+            resultArea.style.display = 'block';
+            resultArea.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ファイル選択時にファイル名を表示
+        function showFileName(input, displayId) {
+            try {
+                const display = document.getElementById(displayId);
+                if (!display) return;
+                if (input && input.files && input.files.length > 0) {
+                    display.textContent = `✓ ${input.files[0].name} がアップロードされました`;
+                } else {
+                    display.textContent = '';
+                }
+            } catch (_) {}
+        }
+
+        // ===== 求職者一覧の読み込み・表示 =====
+        // 求職者一覧（フォームでは非表示に変更）
+        // let SEEKERS_CACHE = [];
+
+        function pick(obj, keys) {
+            for (const k of keys) {
+                if (obj && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return obj[k];
+            }
+            return '';
+        }
+
+        function parseDate(val) {
+            if (!val) return null;
+            try {
+                if (Object.prototype.toString.call(val) === '[object Date]') return val;
+                const d = new Date(val);
+                return isNaN(d.getTime()) ? null : d;
+            } catch (_) { return null; }
+        }
+
+        /* async function loadJobSeekers() {
+            const meta = document.getElementById('seekerMeta');
+            const tbody = document.getElementById('seekerTableBody');
+            try {
+                meta.textContent = 'GASから読み込み中...';
+                if (!window.gasConnector) {
+                    const GAS_URL = GASUtils.getGASUrl();
+                    window.gasConnector = new GASConnector(GAS_URL);
+                }
+                let list = await window.gasConnector.getJobSeekers();
+                if (!Array.isArray(list)) list = [];
+
+                // ソート: 登録日と思しき列で降順
+                list.sort((a, b) => {
+                    const da = parseDate(pick(a, ['登録日時','登録日','作成日','created','timestamp']));
+                    const db = parseDate(pick(b, ['登録日時','登録日','作成日','created','timestamp']));
+                    return (db?.getTime()||0) - (da?.getTime()||0);
+                });
+
+                SEEKERS_CACHE = list;
+                renderSeekerTable();
+            } catch (err) {
+                console.error('求職者一覧の読み込みエラー:', err);
+                meta.textContent = '読み込みに失敗しました: ' + (err.message || err);
+                const tbody = document.getElementById('seekerTableBody');
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:10px; color:#c00;">読み込みに失敗しました</td></tr>';
+            }
+        } */
+
+        /* function renderSeekerTable() {
+            const meta = document.getElementById('seekerMeta');
+            const tbody = document.getElementById('seekerTableBody');
+            const q = (document.getElementById('seekerSearch').value || '').trim().toLowerCase();
+            let rows = SEEKERS_CACHE;
+            if (q) {
+                rows = rows.filter(o => {
+                    const txt = JSON.stringify(o).toLowerCase();
+                    return txt.includes(q);
+                });
+            }
+            meta.textContent = `表示件数: ${rows.length} / 総件数: ${SEEKERS_CACHE.length}`;
+
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:10px; color:#666;">データがありません</td></tr>';
+                return;
+            }
+
+            const html = rows.slice(0, 50).map(o => {
+                const name = pick(o, ['氏名','name']);
+                const email = pick(o, ['メールアドレス','email']);
+                const loc = pick(o, ['希望勤務地','desiredLocation']);
+                const sal = pick(o, ['希望年収','desiredSalary']);
+                const status = pick(o, ['ステータス','status']);
+                const d = pick(o, ['登録日時','登録日','作成日']);
+                return `
+                    <tr>
+                        <td style="padding:10px; border-bottom:1px solid #e1e5e9;">${name || '-'}</td>
+                        <td style="padding:10px; border-bottom:1px solid #e1e5e9;">${email || '-'}</td>
+                        <td style="padding:10px; border-bottom:1px solid #e1e5e9;">${loc || '-'}</td>
+                        <td style="padding:10px; border-bottom:1px solid #e1e5e9;">${sal || '-'}</td>
+                        <td style="padding:10px; border-bottom:1px solid #e1e5e9;">${status || '-'}</td>
+                        <td style="padding:10px; border-bottom:1px solid #e1e5e9;">${d ? new Date(d).toLocaleString() : '-'}</td>
+                    </tr>`;
+            }).join('');
+            tbody.innerHTML = html;
+        } */
+
+        // 検索イベント
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     const input = document.getElementById('seekerSearch');
+        //     if (input) input.addEventListener('input', renderSeekerTable);
+        // });
+
+        // 初回読み込み
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     loadJobSeekers();
+        // });
+    </script>
+</body>
+</html>

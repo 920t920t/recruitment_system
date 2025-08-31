@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI求人一覧管理システム - 人材紹介システム</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="sheets-api-config.js"></script>
+    <!-- GAS 連携ライブラリ（CORS→フォーム送信フォールバック） -->
+    <script src="config.js"></script>
+    <script src="gas-connector.js"></script>
+    <script src="gas-form-submit.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        /* Harmos風カラーパレット */
+        :root {
+            --primary-blue: #2563eb;      /* メインブルー */
+            --secondary-blue: #1d4ed8;    /* ダークブルー */
+            --light-blue: #3b82f6;        /* ライトブルー */
+            --accent-blue: #0ea5e9;       /* アクセントブルー */
+            --bg-blue: #eff6ff;           /* 背景ブルー */
+            --text-dark: #1e293b;         /* ダークテキスト */
+            --text-gray: #64748b;         /* グレーテキスト */
+            --border-gray: #e2e8f0;       /* ボーダー */
+            --bg-white: #ffffff;
+            --bg-gray: #f8fafc;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', Roboto, sans-serif;
+            background: var(--bg-gray);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+        
+        .container {
+            max-width: 95vw;
+            margin: 0 auto;
+            background: var(--bg-white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: var(--primary-blue);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0 0 8px 0;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+        
+        .header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 16px;
+            font-weight: 400;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            background: var(--bg-white);
+            border: 1px solid var(--border-gray);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .ai-settings {
+            background: var(--bg-blue);
+            border: 1px solid #bfdbfe;
+        }
+        
+        .ai-settings .section-title {
+            color: var(--primary-blue);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-gray);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            background: var(--bg-white);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+            border: 1px solid var(--primary-blue);
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary-blue);
+            border-color: var(--secondary-blue);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-white);
+            color: var(--primary-blue);
+            border: 1px solid var(--border-gray);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-gray);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-blue);
+            border: 1px solid var(--primary-blue);
+        }
+        
+        .btn-outline:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            border: 1px solid var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .file-drop-zone {
+            border: 2px dashed var(--border-gray);
+            border-radius: 12px;
+            padding: 48px 24px;
+            text-align: center;
+            background: var(--bg-gray);
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .file-drop-zone.drag-over {
+            border-color: var(--primary-blue);
+            background: var(--bg-blue);
+        }
+        
+        .file-drop-zone.processing {
+            border-color: var(--accent-blue);
+            background: var(--bg-blue);
+        }
+        
+        .file-drop-zone input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .file-drop-zone h4 {
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            color: var(--text-dark);
+        }
+        
+        .file-drop-zone p {
+            margin: 0;
+            color: var(--text-gray);
+            font-size: 14px;
+        }
+        
+        .processing-status {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            display: none;
+        }
+        
+        .processing-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f59e0b;
+        }
+        
+        .processing-item:last-child {
+            border-bottom: none;
+        }
+        
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-blue);
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-gray);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-gray);
+            margin: 0;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-gray);
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-white);
+            min-width: 1400px;
+        }
+        
+        .table th {
+            background: var(--bg-gray);
+            color: var(--text-dark);
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-gray);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--border-gray);
+            vertical-align: top;
+            font-size: 14px;
+        }
+        
+        .table tr:hover {
+            background: var(--bg-gray);
+        }
+        
+        .editable-cell {
+            cursor: text;
+            position: relative;
+        }
+        
+        .editable-cell:hover {
+            background: var(--bg-blue);
+        }
+        
+        .editable-cell input, 
+        .editable-cell select, 
+        .editable-cell textarea {
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 4px 8px;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+        }
+        
+        .editable-cell textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            display: inline-block;
+            min-width: 80px;
+        }
+        
+        .status-not-sent { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .status-sent { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .status-applied { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+        .status-interview { background: #fffbeb; color: #d97706; border: 1px solid #fed7aa; }
+        .status-rejected { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        
+        .ai-badge {
+            background: var(--primary-blue);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+        
+        .confidence-score {
+            font-size: 11px;
+            color: var(--text-gray);
+            font-style: italic;
+            margin-top: 2px;
+        }
+        
+        .file-list {
+            margin-top: 16px;
+            padding: 16px;
+            background: var(--bg-gray);
+            border-radius: 8px;
+            border: 1px solid var(--border-gray);
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            margin: 8px 0;
+            background: var(--bg-white);
+            border-radius: 6px;
+            border: 1px solid var(--border-gray);
+        }
+        
+        .prompt-editor {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .prompt-textarea {
+            width: 100%;
+            margin-top: 8px;
+            padding: 12px;
+            border: 1px solid var(--border-gray);
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 12px;
+            background: var(--bg-white);
+            resize: vertical;
+        }
+        
+        .info-text {
+            font-size: 12px;
+            color: var(--text-gray);
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+        
+        .section-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .table-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI求人一覧管理システム</h1>
+            <p>AIがPDFから求人情報を自動抽出します</p>
+        </div>
+        
+        <div class="content">
+            <!-- AI設定セクション -->
+            <div class="section ai-settings">
+                <h3 class="section-title">🧠 AI設定</h3>
+                <p style="margin: 0 0 16px 0;">AI解析はサーバ側（GAS）で実施します。キー入力は不要です。</p>
+                <input type="password" id="apiKey" class="form-input" placeholder="不要（管理側で設定済み）" disabled />
+                
+                <div style="margin-top: 16px;">
+                    <button class="btn btn-outline" onclick="togglePromptEditor()">
+                        🎯 AI解析プロンプトを編集
+                    </button>
+                    
+                    <div id="promptEditor" class="prompt-editor" style="display: none;">
+                        <label style="color: var(--primary-blue); font-size: 14px; font-weight: 500;">📝 カスタムプロンプト:</label>
+                        <textarea id="customPrompt" rows="8" class="prompt-textarea" placeholder="デフォルトのプロンプトが読み込まれます..."></textarea>
+                        <div style="margin-top: 12px; display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="resetPrompt()">デフォルトに戻す</button>
+                            <button class="btn btn-outline" onclick="testPrompt()">プロンプトテスト</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-text">
+                    ※ OpenAIキーはサーバ側で管理されます（ブラウザ保存不要）<br>
+                    ※ GPT-4o使用で高精度な抽出が可能（1PDF = 約0.5-2円）
+                </div>
+            </div>
+
+            <!-- アップロードセクション -->
+            <div class="section">
+                <h3 class="section-title">📁 求人PDFアップロード</h3>
+                <div class="file-drop-zone" id="dropZone">
+                    <div style="pointer-events: none;">
+                        <h4>🤖 AIが自動で求人情報を抽出</h4>
+                        <p>PDFファイルをドロップまたは選択してください</p>
+                        <p style="color: var(--text-gray); font-size: 12px; margin-top: 8px;">PDF、Word、画像ファイル対応 | 高精度AI分析</p>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                </div>
+                
+                <!-- 処理状況 -->
+                <div id="processingStatus" class="processing-status">
+                    <h4 style="margin: 0 0 12px 0; color: var(--warning);">🔄 AI処理中...</h4>
+                    <div id="processingItems"></div>
+                </div>
+                
+                <div id="fileList" class="file-list" style="display: none;">
+                    <h4 style="margin: 0 0 16px 0; color: var(--text-dark);">📋 アップロード予定ファイル:</h4>
+                    <div id="fileItems"></div>
+                    <button class="btn btn-primary" onclick="processFilesWithAI()" style="margin-top: 16px;">
+                        🤖 AIで求人情報を自動抽出
+                    </button>
+                </div>
+            </div>
+
+            <!-- 統計セクション -->
+            <div class="stats-grid" id="statsSection">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalJobs">0</div>
+                    <p class="stat-label">総求人数</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="notSentJobs">0</div>
+                    <p class="stat-label">未送付</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="sentJobs">0</div>
+                    <p class="stat-label">送付済み</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="appliedJobs">0</div>
+                    <p class="stat-label">応募済み</p>
+                </div>
+            </div>
+
+            <!-- 求人一覧テーブル -->
+            <div class="section">
+                <div class="table-header">
+                    <h3 class="section-title">📋 求人一覧</h3>
+                    <div class="table-actions">
+                        <button class="btn btn-primary" onclick="addNewJob()">➕ 手動で求人を追加</button>
+                        <button class="btn btn-outline" onclick="exportToCSV()">📥 CSV出力</button>
+                        <button class="btn btn-primary" onclick="saveAllJobsToSpreadsheet()">💾 スプレッドシート保存</button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table class="table" id="jobTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 180px;">求人名</th>
+                                <th style="width: 140px;">会社名</th>
+                                <th style="width: 120px;">年収</th>
+                                <th style="width: 140px;">勤務地</th>
+                                <th style="width: 100px;">土日休み</th>
+                                <th style="width: 100px;">年間休日</th>
+                                <th style="width: 200px;">応募条件</th>
+                                <th style="width: 120px;">担当者</th>
+                                <th style="width: 120px;">ステータス</th>
+                                <th style="width: 200px;">備考</th>
+                                <th style="width: 80px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobTableBody">
+                            <!-- AIで抽出されたデータがここに表示される -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // PDF.js設定
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        let jobData = [];
+        let jobIdCounter = 1;
+        // GAS連携の初期化
+        let gasConnector;
+        let formSubmitter;
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            // GAS連携（CONFIG があれば初期化）
+            if (typeof CONFIG !== 'undefined') {
+                const GAS_URL = GASUtils.getGASUrl();
+                gasConnector = new GASConnector(GAS_URL);
+                formSubmitter = new GASFormSubmitter(GAS_URL);
+                console.log('GAS連携が初期化されました:', GAS_URL);
+            } else {
+                console.warn('GAS URLが設定されていません。config.jsを確認してください。');
+            }
+        });
+        // APIキーは不要（GAS側利用）
+
+        // ドラッグ&ドロップ機能
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            fileInput.files = e.dataTransfer.files;
+            displayFileList();
+        });
+
+        fileInput.addEventListener('change', displayFileList);
+
+        function displayFileList() {
+            const files = fileInput.files;
+            const fileList = document.getElementById('fileList');
+            const fileItems = document.getElementById('fileItems');
+            
+            if (files.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+
+            fileList.style.display = 'block';
+            fileItems.innerHTML = '';
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)</span>
+                    <button class="btn btn-danger" onclick="removeFile(${i})" style="padding: 6px 12px; font-size: 12px;">削除</button>
+                `;
+                fileItems.appendChild(fileItem);
+            }
+        }
+
+        function removeFile(index) {
+            const dt = new DataTransfer();
+            const files = fileInput.files;
+            
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+            
+            fileInput.files = dt.files;
+            displayFileList();
+        }
+
+        async function processFilesWithAI() {
+            const files = fileInput.files;
+            if (files.length === 0) {
+                alert('ファイルを選択してください');
+                return;
+            }
+
+            const processingStatus = document.getElementById('processingStatus');
+            const processingItems = document.getElementById('processingItems');
+            
+            processingStatus.style.display = 'block';
+            dropZone.classList.add('processing');
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                await processFileWithAI(file, processingItems);
+            }
+
+            // 処理完了
+            processingStatus.style.display = 'none';
+            dropZone.classList.remove('processing');
+            fileInput.value = '';
+            document.getElementById('fileList').style.display = 'none';
+            
+            updateStats();
+            alert(`${files.length}件の求人をAIで解析・追加しました！`);
+        }
+
+        async function processFileWithAI(file, processingContainer) {
+            // 処理状況表示
+            const processingItem = document.createElement('div');
+            processingItem.className = 'processing-item';
+            processingItem.innerHTML = `
+                <div class="spinner"></div>
+                <span id="status-${file.name}">📄 ${file.name} を解析中...</span>
+            `;
+            processingContainer.appendChild(processingItem);
+
+            try {
+                let extractedText = '';
+
+                if (file.type === 'application/pdf') {
+                    // PDF処理
+                    document.getElementById(`status-${file.name}`).textContent = `📄 ${file.name} からテキスト抽出中...`;
+                    extractedText = await extractTextFromPDF(file);
+                } else {
+                    // その他のファイル（画像など）の場合
+                    extractedText = `ファイル名: ${file.name}\nファイルサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB\n※画像ファイルの場合、OCR機能が必要です`;
+                }
+
+                // AI解析
+                document.getElementById(`status-${file.name}`).textContent = `🤖 ${file.name} をAIで解析中...`;
+                const jobInfo = await analyzeWithOpenAI(extractedText);
+                
+                // テーブルに追加
+                addJobToTable(jobInfo, file.name);
+                
+                document.getElementById(`status-${file.name}`).textContent = `✅ ${file.name} の解析完了！`;
+                
+            } catch (error) {
+                console.error('処理エラー:', error);
+                document.getElementById(`status-${file.name}`).textContent = `❌ ${file.name} の解析に失敗しました`;
+                
+                // エラー時もサンプルデータを追加
+                const fallbackJob = {
+                    jobTitle: `求人_${file.name}`,
+                    company: '会社名不明',
+                    salary: '年収不明',
+                    location: '勤務地不明',
+                    weekendOff: 'unknown',
+                    annualHolidays: '不明',
+                    requirements: '条件不明',
+                    confidence: 0.1
+                };
+                addJobToTable(fallbackJob, file.name);
+            }
+        }
+
+        async function extractTextFromPDF(file) {
+            return new Promise((resolve, reject) => {
+                const fileReader = new FileReader();
+                fileReader.onload = async function() {
+                    try {
+                        const typedArray = new Uint8Array(this.result);
+                        const pdf = await pdfjsLib.getDocument(typedArray).promise;
+                        let fullText = '';
+
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            fullText += pageText + '\n';
+                        }
+
+                        resolve(fullText);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                fileReader.onerror = () => reject(new Error('ファイル読み込みエラー'));
+                fileReader.readAsArrayBuffer(file);
+            });
+        }
+
+        // デフォルトプロンプト
+        const defaultPrompt = `あなたは日本の求人票解析の専門家です。以下の求人票テキストから情報を正確に抽出し、JSON形式で回答してください。
+
+## 抽出ルール：
+1. 求人タイトル：「募集職種」「職種名」「ポジション」などから抽出
+2. 会社名：株式会社、有限会社、合同会社などの法人格も含める
+3. 年収：「年収」「給与」「月給×12+賞与」で計算。範囲で記載（例：400-500万円）
+4. 勤務地：都道府県名は必須、市区町村も可能な限り抽出
+5. 土日休み：「土日祝休み」「完全週休2日制」→yes、「シフト制」「年間休日○○日のみ記載」→no
+6. 年間休日：明記されている場合のみ数値抽出（例：125日）
+7. 応募条件：学歴・経験・資格・スキルなど簡潔に（50文字以内）
+8. 確信度：情報の明確さに基づき0.3-1.0で評価
+
+## 出力JSON形式：
+{
+  "jobTitle": "具体的な職種名",
+  "company": "正式な会社名",
+  "salary": "年収レンジ（万円表記）",
+  "location": "都道府県市区町村",
+  "weekendOff": "yes/no/unknown",
+  "annualHolidays": "数値+日（例：125日）",
+  "requirements": "応募条件を簡潔に",
+  "confidence": 0.0-1.0
+}
+
+## 分析対象テキスト：
+{TEXT_PLACEHOLDER}
+
+必ずJSON形式のみで回答してください。説明文は不要です。`;
+
+        function getCustomPrompt() {
+            const customPrompt = document.getElementById('customPrompt').value;
+            return customPrompt || defaultPrompt;
+        }
+
+        function togglePromptEditor() {
+            const editor = document.getElementById('promptEditor');
+            const promptTextarea = document.getElementById('customPrompt');
+            
+            if (editor.style.display === 'none') {
+                editor.style.display = 'block';
+                if (!promptTextarea.value) {
+                    promptTextarea.value = defaultPrompt;
+                }
+            } else {
+                editor.style.display = 'none';
+            }
+        }
+
+        function resetPrompt() {
+            document.getElementById('customPrompt').value = defaultPrompt;
+            alert('プロンプトをデフォルトに戻しました');
+        }
+
+        function testPrompt() {
+            const prompt = getCustomPrompt();
+            const sampleText = "職種：Webデザイナー\n会社名：株式会社サンプル\n年収：400-500万円\n勤務地：東京都渋谷区\n休日：土日祝日休み\n年間休日：125日\n応募条件：Webデザイン経験3年以上";
+            const finalPrompt = prompt.replace('{TEXT_PLACEHOLDER}', sampleText);
+            
+            alert('テスト用プロンプト:\n\n' + finalPrompt.substring(0, 500) + '...');
+        }
+
+        async function analyzeWithOpenAI(text) {
+            const promptTemplate = getCustomPrompt();
+            try {
+                const result = await gasConnector.sendRequest('aiExtract', { text, prompt: promptTemplate });
+                return {
+                    jobTitle: result.jobTitle || '求人情報',
+                    company: result.company || '',
+                    salary: result.salary || '',
+                    location: result.location || '',
+                    weekendOff: result.weekendOff || 'unknown',
+                    annualHolidays: result.annualHolidays || '',
+                    requirements: result.requirements || '',
+                    confidence: typeof result.confidence === 'number' ? result.confidence : 0.8
+                };
+            } catch (error) {
+                console.error('AI抽出エラー:', error);
+                return {
+                    jobTitle: '求人情報',
+                    company: 'AI解析失敗',
+                    salary: '不明',
+                    location: '不明',
+                    weekendOff: 'unknown',
+                    annualHolidays: '不明',
+                    requirements: '不明',
+                    confidence: 0.1
+                };
+            }
+        }
+
+        function addJobToTable(jobInfo, fileName) {
+            const jobId = 'ai_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            const newRow = document.createElement('tr');
+            newRow.setAttribute('data-job-id', jobId);
+            newRow.innerHTML = `
+                <td class="editable-cell" data-field="jobTitle">
+                    ${jobInfo.jobTitle}
+                    <span class="ai-badge">AI</span>
+                    <div class="confidence-score">確信度: ${Math.round(jobInfo.confidence * 100)}%</div>
+                </td>
+                <td class="editable-cell" data-field="company">${jobInfo.company}</td>
+                <td class="editable-cell" data-field="salary">${jobInfo.salary}</td>
+                <td class="editable-cell" data-field="location">${jobInfo.location}</td>
+                <td class="editable-cell" data-field="weekendOff">
+                    <select onchange="updateJobData(this)" class="form-input" style="padding: 8px;">
+                        <option value="yes" ${jobInfo.weekendOff === 'yes' ? 'selected' : ''}>あり</option>
+                        <option value="no" ${jobInfo.weekendOff === 'no' ? 'selected' : ''}>なし</option>
+                        <option value="unknown" ${jobInfo.weekendOff === 'unknown' ? 'selected' : ''}>不明</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="annualHolidays">${jobInfo.annualHolidays}</td>
+                <td class="editable-cell" data-field="requirements">${jobInfo.requirements}</td>
+                <td class="editable-cell" data-field="assignedTo">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="担当者名" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="status">
+                    <select onchange="updateJobData(this)" class="form-input" style="padding: 8px;">
+                        <option value="not-sent" selected>未送付</option>
+                        <option value="sent">送付済み</option>
+                        <option value="applied">応募済み</option>
+                        <option value="interview">面接中</option>
+                        <option value="rejected">見送り</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="notes">
+                    <textarea onchange="updateJobData(this)" class="form-input" placeholder="備考・メモ" style="padding: 8px;">元ファイル: ${fileName}</textarea>
+                </td>
+                <td>
+                    <button class="btn btn-danger" onclick="deleteJob(this)" style="padding: 6px 12px; font-size: 12px;">削除</button>
+                </td>
+            `;
+            
+            document.getElementById('jobTableBody').appendChild(newRow);
+        }
+
+        function addNewJob() {
+            const jobId = 'manual_' + Date.now();
+            const newRow = document.createElement('tr');
+            newRow.setAttribute('data-job-id', jobId);
+            newRow.innerHTML = `
+                <td class="editable-cell" data-field="jobTitle">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="求人名" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="company">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="会社名" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="salary">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="年収" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="location">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="勤務地" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="weekendOff">
+                    <select onchange="updateJobData(this)" class="form-input" style="padding: 8px;">
+                        <option value="unknown" selected>不明</option>
+                        <option value="yes">あり</option>
+                        <option value="no">なし</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="annualHolidays">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="年間休日" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="requirements">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="応募条件" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="assignedTo">
+                    <input type="text" onchange="updateJobData(this)" class="form-input" placeholder="担当者名" style="padding: 8px;">
+                </td>
+                <td class="editable-cell" data-field="status">
+                    <select onchange="updateJobData(this)" class="form-input" style="padding: 8px;">
+                        <option value="not-sent" selected>未送付</option>
+                        <option value="sent">送付済み</option>
+                        <option value="applied">応募済み</option>
+                        <option value="interview">面接中</option>
+                        <option value="rejected">見送り</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="notes">
+                    <textarea onchange="updateJobData(this)" class="form-input" placeholder="備考・メモ" style="padding: 8px;"></textarea>
+                </td>
+                <td>
+                    <button class="btn btn-danger" onclick="deleteJob(this)" style="padding: 6px 12px; font-size: 12px;">削除</button>
+                </td>
+            `;
+            
+            document.getElementById('jobTableBody').appendChild(newRow);
+            updateStats();
+        }
+
+        async function updateJobData(element) {
+            updateStats();
+            
+            // Google Sheetsに自動保存
+            try {
+                await saveCurrentJobData();
+            } catch (error) {
+                console.warn('求人データの自動保存に失敗しました:', error);
+            }
+        }
+        
+        // 求人データをGoogle Sheetsに保存
+        async function saveCurrentJobData() {
+            if (typeof saveJobListingData !== 'function') {
+                console.log('Google Sheets API が利用できません。');
+                return;
+            }
+            
+            const rows = document.querySelectorAll('#jobTableBody tr');
+            const savePromises = [];
+            
+            rows.forEach(row => {
+                const jobData = extractJobDataFromRow(row);
+                if (jobData.title && jobData.company) { // 最低限のデータがある場合のみ保存
+                    savePromises.push(saveJobListingData(jobData));
+                }
+            });
+            
+            if (savePromises.length > 0) {
+                await Promise.all(savePromises);
+                console.log(`${savePromises.length}件の求人データを保存しました`);
+            }
+        }
+        
+        // 行から求人データを抽出
+        function extractJobDataFromRow(row) {
+            const getFieldValue = (fieldName) => {
+                const cell = row.querySelector(`[data-field="${fieldName}"]`);
+                if (!cell) return '';
+                
+                const input = cell.querySelector('input, select, textarea');
+                if (input) {
+                    return input.value || '';
+                }
+                return cell.textContent?.trim() || '';
+            };
+            
+            return {
+                title: getFieldValue('jobTitle'),
+                company: getFieldValue('company'),
+                department: '',
+                location: getFieldValue('location'),
+                salaryMin: getFieldValue('salary').split('-')[0]?.trim() || '',
+                salaryMax: getFieldValue('salary').split('-')[1]?.trim() || '',
+                employmentType: '正社員',
+                workStyle: '通常勤務',
+                requirements: getFieldValue('requirements'),
+                skills: '',
+                benefits: '',
+                description: getFieldValue('notes'),
+                applicationDeadline: '',
+                startDate: '',
+                clientContact: getFieldValue('assignedTo'),
+                fee: '',
+                priority: '中',
+                aiConfidence: getFieldValue('confidence') || '',
+                aiExtracted: 'true',
+                source: 'pdf_upload',
+                notes: getFieldValue('notes'),
+                weekendOff: getFieldValue('weekendOff'),
+                annualHolidays: getFieldValue('annualHolidays')
+            };
+        }
+
+        function deleteJob(button) {
+            if (confirm('この求人を削除しますか？')) {
+                button.closest('tr').remove();
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            const rows = document.querySelectorAll('#jobTableBody tr');
+            const stats = {
+                total: rows.length,
+                notSent: 0,
+                sent: 0,
+                applied: 0
+            };
+
+            rows.forEach(row => {
+                const statusSelect = row.querySelector('[data-field="status"] select');
+                if (statusSelect) {
+                    const status = statusSelect.value;
+                    switch(status) {
+                        case 'not-sent': stats.notSent++; break;
+                        case 'sent': stats.sent++; break;
+                        case 'applied': stats.applied++; break;
+                    }
+                }
+            });
+
+            document.getElementById('totalJobs').textContent = stats.total;
+            document.getElementById('notSentJobs').textContent = stats.notSent;
+            document.getElementById('sentJobs').textContent = stats.sent;
+            document.getElementById('appliedJobs').textContent = stats.applied;
+        }
+
+        function exportToCSV() {
+            const rows = document.querySelectorAll('#jobTableBody tr');
+            let csv = '求人名,会社名,年収,勤務地,土日休み,年間休日,応募条件,担当者,ステータス,備考\n';
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = [];
+                
+                for (let i = 0; i < cells.length - 1; i++) {
+                    const cell = cells[i];
+                    let value = '';
+                    
+                    // AIバッジや確信度を除外
+                    const input = cell.querySelector('input, select, textarea');
+                    if (input) {
+                        value = input.value;
+                    } else {
+                        value = cell.textContent.replace(/AI確信度:.*%/g, '').trim();
+                    }
+                    
+                    rowData.push(`"${value}"`);
+                }
+                
+                csv += rowData.join(',') + '\n';
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `AI求人一覧_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        // ===== GAS連携保存（CORS→フォーム送信フォールバック） =====
+
+        async function saveJobToSpreadsheet(row) {
+            try {
+                const jobInfo = extractJobDataFromRow(row);
+                console.log('求人データ保存開始:', jobInfo);
+
+                if (!gasConnector || !formSubmitter) {
+                    console.warn('GAS連携が未初期化です。config.js の GAS_URL を確認してください。');
+                }
+
+                GASUtils.showProgress('求人データを保存中...');
+
+                let result;
+                try {
+                    // まずCORSで試行
+                    result = await gasConnector.saveJobListing(jobInfo);
+                    console.log('CORS保存成功:', result);
+                } catch (corsError) {
+                    console.warn('CORS失敗、フォーム送信で再試行:', corsError);
+                    GASUtils.showProgress('フォーム送信で再試行中...');
+                    // CORS失敗時はフォーム送信で再試行
+                    result = await formSubmitter.submitData('saveJobListing', jobInfo);
+                    console.log('フォーム送信成功:', result);
+                }
+
+                GASUtils.showProgress('求人データの保存が完了しました！');
+                addSavedIndicator(row);
+
+                // アクティビティログ（フォーム送信でCORS回避）
+                try {
+                    await formSubmitter.submitData('logActivity', {
+                        action: 'AI求人データ保存',
+                        details: `求人「${jobInfo.title}」をスプレッドシートに保存`,
+                        userId: 'ai-job-manager',
+                        url: window.location.href
+                    });
+                } catch (logError) {
+                    console.warn('ログ記録は省略:', logError);
+                }
+
+                return result;
+
+            } catch (error) {
+                console.error('求人保存エラー:', error);
+                GASUtils.showError(error);
+                throw error;
+            }
+        }
+
+        function addSavedIndicator(row) {
+            const existing = row.querySelector('.saved-indicator');
+            if (existing) existing.remove();
+            const indicator = document.createElement('span');
+            indicator.className = 'saved-indicator';
+            indicator.innerHTML = '✅ 保存済み';
+            indicator.style.cssText = `
+                background: #28a745;
+                color: white;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 11px;
+                margin-left: 5px;
+            `;
+            const firstCell = row.querySelector('td');
+            if (firstCell) firstCell.appendChild(indicator);
+        }
+
+        async function saveAllJobsToSpreadsheet() {
+            const rows = document.querySelectorAll('#jobTableBody tr');
+            if (rows.length === 0) {
+                alert('保存する求人がありません。');
+                return;
+            }
+
+            if (!confirm(`${rows.length}件の求人をスプレッドシートに保存しますか？`)) {
+                return;
+            }
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const row of rows) {
+                try {
+                    await saveJobToSpreadsheet(row);
+                    successCount++;
+                    await new Promise(r => setTimeout(r, 100));
+                } catch (e) {
+                    console.error('行保存エラー:', e);
+                    errorCount++;
+                }
+            }
+
+            alert(`保存完了: 成功 ${successCount}件, エラー ${errorCount}件`);
+        }
+    </script>
+</body>
+</html>

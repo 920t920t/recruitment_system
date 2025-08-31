@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>求人一覧管理システム - 人材紹介システム</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .content {
+            padding: 30px;
+        }
+        .upload-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .file-drop-zone {
+            border: 3px dashed #28a745;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: #f0fff4;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .file-drop-zone.drag-over {
+            border-color: #20c997;
+            background: #e6fffa;
+            transform: scale(1.02);
+        }
+        .file-drop-zone input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .job-table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .job-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            min-width: 1000px;
+        }
+        .job-table th {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .job-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+        .job-table tr:hover {
+            background: #f8f9fa;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            display: inline-block;
+            min-width: 80px;
+        }
+        .status-not-sent { background: #f8d7da; color: #721c24; }
+        .status-sent { background: #d4edda; color: #155724; }
+        .status-applied { background: #d1ecf1; color: #0c5460; }
+        .status-interview { background: #fff3cd; color: #856404; }
+        .status-rejected { background: #f5c6cb; color: #721c24; }
+        
+        .editable-cell {
+            cursor: text;
+            position: relative;
+            min-height: 30px;
+        }
+        .editable-cell:hover {
+            background: #e3f2fd;
+        }
+        .editable-cell input, .editable-cell select, .editable-cell textarea {
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 4px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+        .editable-cell textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .add-job-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        .add-job-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+        }
+        .file-list {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f5e8;
+            border-radius: 8px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(45deg, #17a2b8, #138496);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .export-btn {
+            background: linear-gradient(45deg, #6f42c1, #5a32a3);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 求人一覧管理システム</h1>
+            <p>求人PDFをアップロードして、一覧で管理しましょう</p>
+        </div>
+        
+        <div class="content">
+            <!-- アップロードセクション -->
+            <div class="upload-section">
+                <h3>📁 求人PDFアップロード</h3>
+                <div class="file-drop-zone" id="dropZone">
+                    <div style="pointer-events: none;">
+                        <h4>📄 求人PDFファイルをドロップまたは選択</h4>
+                        <p>複数のPDFファイルを一度にアップロード可能</p>
+                        <p style="color: #6c757d; font-size: 14px;">PDF、Word、画像ファイル対応</p>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                </div>
+                
+                <div id="fileList" class="file-list" style="display: none;">
+                    <h4>📋 アップロード予定ファイル:</h4>
+                    <div id="fileItems"></div>
+                    <button onclick="processFiles()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; margin-top: 10px; cursor: pointer;">📊 求人情報を抽出して追加</button>
+                </div>
+            </div>
+
+            <!-- 統計セクション -->
+            <div class="stats-section" id="statsSection">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalJobs">0</div>
+                    <div>総求人数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="notSentJobs">0</div>
+                    <div>未送付</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="sentJobs">0</div>
+                    <div>送付済み</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="appliedJobs">0</div>
+                    <div>応募済み</div>
+                </div>
+            </div>
+
+            <!-- 求人一覧テーブル -->
+            <div>
+                <h3>📋 求人一覧
+                    <button class="add-job-btn" onclick="addNewJob()">➕ 手動で求人を追加</button>
+                    <button class="export-btn" onclick="exportToCSV()">📥 CSV出力</button>
+                    <button class="export-btn" onclick="saveAllJobsToSpreadsheet()" style="background: #007bff;">💾 スプレッドシート保存</button>
+                    <button class="export-btn" onclick="loadSpreadsheetStats()" style="background: #28a745;">📈 統計更新</button>
+                </h3>
+                
+                <div class="job-table-container">
+                    <table class="job-table" id="jobTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px;">求人名</th>
+                                <th style="width: 100px;">会社名</th>
+                                <th style="width: 80px;">年収</th>
+                                <th style="width: 80px;">勤務地</th>
+                                <th style="width: 70px;">土日休み</th>
+                                <th style="width: 80px;">年間休日</th>
+                                <th style="width: 120px;">応募条件</th>
+                                <th style="width: 100px;">担当者</th>
+                                <th style="width: 100px;">ステータス</th>
+                                <th style="width: 150px;">備考</th>
+                                <th style="width: 60px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobTableBody">
+                            <!-- サンプルデータ -->
+                            <tr data-job-id="sample1">
+                                <td class="editable-cell" data-field="jobTitle">Webデザイナー</td>
+                                <td class="editable-cell" data-field="company">株式会社サンプル</td>
+                                <td class="editable-cell" data-field="salary">400-500万円</td>
+                                <td class="editable-cell" data-field="location">東京都渋谷区</td>
+                                <td class="editable-cell" data-field="weekendOff">
+                                    <select onchange="updateJobData(this)">
+                                        <option value="yes" selected>あり</option>
+                                        <option value="no">なし</option>
+                                        <option value="unknown">不明</option>
+                                    </select>
+                                </td>
+                                <td class="editable-cell" data-field="annualHolidays">125日</td>
+                                <td class="editable-cell" data-field="requirements">デザイン経験3年以上</td>
+                                <td class="editable-cell" data-field="assignedTo">
+                                    <input type="text" value="田中太郎" onchange="updateJobData(this)" placeholder="担当者名">
+                                </td>
+                                <td class="editable-cell" data-field="status">
+                                    <select onchange="updateJobData(this)" class="status-select">
+                                        <option value="not-sent" selected>未送付</option>
+                                        <option value="sent">送付済み</option>
+                                        <option value="applied">応募済み</option>
+                                        <option value="interview">面接中</option>
+                                        <option value="rejected">見送り</option>
+                                    </select>
+                                </td>
+                                <td class="editable-cell" data-field="notes">
+                                    <textarea onchange="updateJobData(this)" placeholder="備考・メモ">リモートワーク可</textarea>
+                                </td>
+                                <td>
+                                    <button class="delete-btn" onclick="deleteJob(this)">削除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let jobData = [];
+        let jobIdCounter = 1;
+
+        // ドラッグ&ドロップ機能
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            fileInput.files = e.dataTransfer.files;
+            displayFileList();
+        });
+
+        fileInput.addEventListener('change', displayFileList);
+
+        function displayFileList() {
+            const files = fileInput.files;
+            const fileList = document.getElementById('fileList');
+            const fileItems = document.getElementById('fileItems');
+            
+            if (files.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+
+            fileList.style.display = 'block';
+            fileItems.innerHTML = '';
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)</span>
+                    <button onclick="removeFile(${i})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">削除</button>
+                `;
+                fileItems.appendChild(fileItem);
+            }
+        }
+
+        function removeFile(index) {
+            const dt = new DataTransfer();
+            const files = fileInput.files;
+            
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+            
+            fileInput.files = dt.files;
+            displayFileList();
+        }
+
+        function processFiles() {
+            const files = fileInput.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                // 実際のアプリではここでPDFを解析してデータを抽出
+                // 今回はサンプルデータを生成
+                addJobFromFile(file);
+            }
+            
+            // ファイルリストをクリア
+            fileInput.value = '';
+            document.getElementById('fileList').style.display = 'none';
+            
+            updateStats();
+            alert(`${files.length}件の求人を追加しました！`);
+        }
+
+        function addJobFromFile(file) {
+            // PDFから抽出されたと仮定したサンプルデータ
+            const sampleJobs = [
+                { jobTitle: 'システムエンジニア', company: 'テック株式会社', salary: '500-600万円', location: '東京都新宿区', weekendOff: 'yes', annualHolidays: '120日', requirements: 'Java経験2年以上' },
+                { jobTitle: 'マーケティング', company: '広告代理店ABC', salary: '400-500万円', location: '大阪府大阪市', weekendOff: 'no', annualHolidays: '110日', requirements: 'マーケティング経験1年以上' },
+                { jobTitle: '営業職', company: '商事会社XYZ', salary: '350-450万円', location: '愛知県名古屋市', weekendOff: 'yes', annualHolidays: '125日', requirements: '営業経験不問' }
+            ];
+            
+            const randomJob = sampleJobs[Math.floor(Math.random() * sampleJobs.length)];
+            const jobId = 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            const newRow = document.createElement('tr');
+            newRow.setAttribute('data-job-id', jobId);
+            newRow.innerHTML = `
+                <td class="editable-cell" data-field="jobTitle">${randomJob.jobTitle}</td>
+                <td class="editable-cell" data-field="company">${randomJob.company}</td>
+                <td class="editable-cell" data-field="salary">${randomJob.salary}</td>
+                <td class="editable-cell" data-field="location">${randomJob.location}</td>
+                <td class="editable-cell" data-field="weekendOff">
+                    <select onchange="updateJobData(this)">
+                        <option value="yes" ${randomJob.weekendOff === 'yes' ? 'selected' : ''}>あり</option>
+                        <option value="no" ${randomJob.weekendOff === 'no' ? 'selected' : ''}>なし</option>
+                        <option value="unknown">不明</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="annualHolidays">${randomJob.annualHolidays}</td>
+                <td class="editable-cell" data-field="requirements">${randomJob.requirements}</td>
+                <td class="editable-cell" data-field="assignedTo">
+                    <input type="text" onchange="updateJobData(this)" placeholder="担当者名">
+                </td>
+                <td class="editable-cell" data-field="status">
+                    <select onchange="updateJobData(this)" class="status-select">
+                        <option value="not-sent" selected>未送付</option>
+                        <option value="sent">送付済み</option>
+                        <option value="applied">応募済み</option>
+                        <option value="interview">面接中</option>
+                        <option value="rejected">見送り</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="notes">
+                    <textarea onchange="updateJobData(this)" placeholder="備考・メモ"></textarea>
+                </td>
+                <td>
+                    <button class="delete-btn" onclick="deleteJob(this)">削除</button>
+                </td>
+            `;
+            
+            document.getElementById('jobTableBody').appendChild(newRow);
+        }
+
+        function addNewJob() {
+            const jobId = 'manual_' + Date.now();
+            const newRow = document.createElement('tr');
+            newRow.setAttribute('data-job-id', jobId);
+            newRow.innerHTML = `
+                <td class="editable-cell" data-field="jobTitle">
+                    <input type="text" onchange="updateJobData(this)" placeholder="求人名">
+                </td>
+                <td class="editable-cell" data-field="company">
+                    <input type="text" onchange="updateJobData(this)" placeholder="会社名">
+                </td>
+                <td class="editable-cell" data-field="salary">
+                    <input type="text" onchange="updateJobData(this)" placeholder="年収">
+                </td>
+                <td class="editable-cell" data-field="location">
+                    <input type="text" onchange="updateJobData(this)" placeholder="勤務地">
+                </td>
+                <td class="editable-cell" data-field="weekendOff">
+                    <select onchange="updateJobData(this)">
+                        <option value="unknown" selected>不明</option>
+                        <option value="yes">あり</option>
+                        <option value="no">なし</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="annualHolidays">
+                    <input type="text" onchange="updateJobData(this)" placeholder="年間休日">
+                </td>
+                <td class="editable-cell" data-field="requirements">
+                    <input type="text" onchange="updateJobData(this)" placeholder="応募条件">
+                </td>
+                <td class="editable-cell" data-field="assignedTo">
+                    <input type="text" onchange="updateJobData(this)" placeholder="担当者名">
+                </td>
+                <td class="editable-cell" data-field="status">
+                    <select onchange="updateJobData(this)" class="status-select">
+                        <option value="not-sent" selected>未送付</option>
+                        <option value="sent">送付済み</option>
+                        <option value="applied">応募済み</option>
+                        <option value="interview">面接中</option>
+                        <option value="rejected">見送り</option>
+                    </select>
+                </td>
+                <td class="editable-cell" data-field="notes">
+                    <textarea onchange="updateJobData(this)" placeholder="備考・メモ"></textarea>
+                </td>
+                <td>
+                    <button class="delete-btn" onclick="deleteJob(this)">削除</button>
+                </td>
+            `;
+            
+            document.getElementById('jobTableBody').appendChild(newRow);
+            updateStats();
+        }
+
+        function updateJobData(element) {
+            // データ更新時にステータスバッジを更新
+            const row = element.closest('tr');
+            const statusCell = row.querySelector('[data-field="status"]');
+            if (statusCell && statusCell.contains(element)) {
+                updateStatusBadge(element);
+            }
+            updateStats();
+        }
+
+        function updateStatusBadge(select) {
+            const value = select.value;
+            let badgeClass = '';
+            
+            switch(value) {
+                case 'not-sent': badgeClass = 'status-not-sent'; break;
+                case 'sent': badgeClass = 'status-sent'; break;
+                case 'applied': badgeClass = 'status-applied'; break;
+                case 'interview': badgeClass = 'status-interview'; break;
+                case 'rejected': badgeClass = 'status-rejected'; break;
+            }
+            
+            select.className = 'status-select';
+        }
+
+        function deleteJob(button) {
+            if (confirm('この求人を削除しますか？')) {
+                button.closest('tr').remove();
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            const rows = document.querySelectorAll('#jobTableBody tr');
+            const stats = {
+                total: rows.length,
+                notSent: 0,
+                sent: 0,
+                applied: 0
+            };
+
+            rows.forEach(row => {
+                const statusSelect = row.querySelector('[data-field="status"] select');
+                if (statusSelect) {
+                    const status = statusSelect.value;
+                    switch(status) {
+                        case 'not-sent': stats.notSent++; break;
+                        case 'sent': stats.sent++; break;
+                        case 'applied': stats.applied++; break;
+                    }
+                }
+            });
+
+            document.getElementById('totalJobs').textContent = stats.total;
+            document.getElementById('notSentJobs').textContent = stats.notSent;
+            document.getElementById('sentJobs').textContent = stats.sent;
+            document.getElementById('appliedJobs').textContent = stats.applied;
+        }
+
+        function exportToCSV() {
+            const rows = document.querySelectorAll('#jobTableBody tr');
+            let csv = '求人名,会社名,年収,勤務地,土日休み,年間休日,応募条件,担当者,ステータス,備考\n';
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = [];
+                
+                for (let i = 0; i < cells.length - 1; i++) { // 最後の操作列は除く
+                    const cell = cells[i];
+                    const input = cell.querySelector('input, select, textarea');
+                    const value = input ? input.value : cell.textContent.trim();
+                    rowData.push(`"${value}"`);
+                }
+                
+                csv += rowData.join(',') + '\n';
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `求人一覧_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        // ===== GAS連携機能 =====
+        
+        /**
+         * 行データをスプレッドシートに保存
+         */
+        async function saveJobToSpreadsheet(row) {
+            try {
+                const jobData = extractJobDataFromRow(row);
+                console.log('求人データ保存開始:', jobData);
+                
+                GASUtils.showProgress('求人データを保存中...');
+                
+                let result;
+                try {
+                    // まずCORSで試行
+                    result = await gasConnector.saveJobListing(jobData);
+                    console.log('CORS保存成功:', result);
+                } catch (corsError) {
+                    console.warn('CORS失敗、フォーム送信で再試行:', corsError);
+                    GASUtils.showProgress('フォーム送信で再試行中...');
+                    
+                    // CORS失敗時はフォーム送信で再試行
+                    result = await formSubmitter.submitData('saveJobListing', jobData);
+                    console.log('フォーム送信成功:', result);
+                }
+                
+                GASUtils.showProgress('求人データの保存が完了しました！');
+                
+                // 保存済みマークを追加
+                addSavedIndicator(row);
+                
+                // アクティビティログ記録（フォーム送信版）
+                try {
+                    await formSubmitter.submitData('logActivity', {
+                        action: '求人データ保存',
+                        details: `求人「${jobData.title}」をスプレッドシートに保存`,
+                        userId: 'job-manager',
+                        url: window.location.href
+                    });
+                } catch (logError) {
+                    console.warn('ログ記録は省略:', logError);
+                }
+                
+                return result;
+                
+            } catch (error) {
+                console.error('求人保存エラー:', error);
+                GASUtils.showError(error);
+                throw error;
+            }
+        }
+        
+        /**
+         * テーブル行から求人データを抽出
+         */
+        function extractJobDataFromRow(row) {
+            const getValue = (field) => {
+                const element = row.querySelector(`[data-field="${field}"] input, [data-field="${field}"] select, [data-field="${field}"] textarea`);
+                return element ? element.value : '';
+            };
+            
+            return {
+                title: getValue('jobTitle'),
+                company: getValue('company'),
+                salary: getValue('salary'),
+                location: getValue('location'),
+                weekendOff: getValue('weekendOff'),
+                annualHolidays: getValue('annualHolidays'),
+                requirements: getValue('requirements'),
+                assignedTo: getValue('assignedTo'),
+                status: getValue('status'),
+                notes: getValue('notes'),
+                source: 'job-manager',
+                priority: '中'
+            };
+        }
+        
+        /**
+         * 保存済みインジケーターを追加
+         */
+        function addSavedIndicator(row) {
+            // 既存のインジケーターがあれば削除
+            const existingIndicator = row.querySelector('.saved-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // 新しいインジケーターを追加
+            const indicator = document.createElement('span');
+            indicator.className = 'saved-indicator';
+            indicator.innerHTML = '✅ 保存済み';
+            indicator.style.cssText = `
+                background: #28a745;
+                color: white;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 11px;
+                margin-left: 5px;
+            `;
+            
+            const firstCell = row.querySelector('td');
+            if (firstCell) {
+                firstCell.appendChild(indicator);
+            }
+        }
+        
+        /**
+         * 一括保存機能
+         */
+        async function saveAllJobsToSpreadsheet() {
+            const rows = document.querySelectorAll('#jobTableBody tr');
+            if (rows.length === 0) {
+                alert('保存する求人がありません。');
+                return;
+            }
+            
+            if (!confirm(`${rows.length}件の求人をスプレッドシートに保存しますか？`)) {
+                return;
+            }
+            
+            let successCount = 0;
+            let errorCount = 0;
+            
+            for (const row of rows) {
+                try {
+                    await saveJobToSpreadsheet(row);
+                    successCount++;
+                    
+                    // 少し待機（API制限対策）
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    console.error('行保存エラー:', error);
+                    errorCount++;
+                }
+            }
+            
+            alert(`保存完了: 成功 ${successCount}件, エラー ${errorCount}件`);
+        }
+        
+        /**
+         * スプレッドシート統計情報を取得・表示
+         */
+        async function loadSpreadsheetStats() {
+            try {
+                GASUtils.showProgress('統計データを読み込み中...');
+                
+                let stats;
+                try {
+                    // まずCORSで試行
+                    stats = await gasConnector.getStatistics();
+                    console.log('CORS統計取得成功:', stats);
+                } catch (corsError) {
+                    console.warn('CORS統計取得失敗、フォーム送信で再試行:', corsError);
+                    
+                    // CORS失敗時はダミーデータを表示
+                    stats = {
+                        totalJobSeekers: '不明',
+                        totalJobListings: '不明', 
+                        activeJobSeekers: '不明',
+                        activeJobListings: '不明',
+                        lastUpdated: new Date().toISOString(),
+                        mode: 'CORS制限のため詳細データ取得不可'
+                    };
+                    console.log('ダミー統計データ:', stats);
+                }
+                
+                // 統計表示エリアを更新
+                updateSpreadsheetStats(stats);
+                
+                GASUtils.showProgress('統計データの読み込みが完了しました！');
+                
+            } catch (error) {
+                console.error('統計取得エラー:', error);
+                GASUtils.showError(error);
+            }
+        }
+        
+        /**
+         * スプレッドシート統計の表示更新
+         */
+        function updateSpreadsheetStats(stats) {
+            // 統計情報表示エリアがない場合は作成
+            let statsArea = document.getElementById('spreadsheet-stats');
+            if (!statsArea) {
+                statsArea = document.createElement('div');
+                statsArea.id = 'spreadsheet-stats';
+                statsArea.style.cssText = `
+                    background: #e9ecef;
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-top: 20px;
+                    border-left: 4px solid #007bff;
+                `;
+                
+                const content = document.querySelector('.content');
+                content.appendChild(statsArea);
+            }
+            
+            statsArea.innerHTML = `
+                <h3>📊 スプレッドシート統計</h3>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div><strong>求職者:</strong> ${stats.totalJobSeekers || 0}件 (アクティブ: ${stats.activeJobSeekers || 0}件)</div>
+                    <div><strong>求人:</strong> ${stats.totalJobListings || 0}件 (アクティブ: ${stats.activeJobListings || 0}件)</div>
+                    <div><strong>最終更新:</strong> ${stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : '不明'}</div>
+                </div>
+            `;
+        }
+
+        // 初期化（GAS連携機能付き）
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            
+            // 統計データを読み込み
+            if (CONFIG && CONFIG.GAS_URL && CONFIG.GAS_URL !== 'YOUR_DEPLOYED_GAS_URL_HERE') {
+                loadSpreadsheetStats();
+            }
+        });
+    </script>
+    
+    <!-- GAS連携ライブラリ -->
+    <script src="config.js"></script>
+    <script src="gas-connector.js"></script>
+    <script src="gas-form-submit.js"></script>
+    
+    <script>
+        // GAS連携の初期化
+        let gasConnector;
+        let formSubmitter;
+        
+        // 設定が読み込まれたら初期化
+        if (typeof CONFIG !== 'undefined') {
+            const GAS_URL = GASUtils.getGASUrl();
+            gasConnector = new GASConnector(GAS_URL);
+            formSubmitter = new GASFormSubmitter(GAS_URL);
+            console.log('GAS連携が初期化されました:', CONFIG.GAS_URL);
+        } else {
+            console.warn('GAS URLが設定されていません。config.jsを確認してください。');
+        }
+    </script>
+</body>
+</html>

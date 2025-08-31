@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人材紹介システム - ダッシュボード</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <script src="config.js"></script>
+    <script src="gas-connector.js"></script>
+    <script src="gas-form-submit.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        /* Harmos風カラーパレット */
+        :root {
+            --primary-blue: #2563eb;      
+            --secondary-blue: #1d4ed8;    
+            --light-blue: #3b82f6;        
+            --accent-blue: #0ea5e9;       
+            --bg-blue: #eff6ff;           
+            --text-dark: #1e293b;         
+            --text-gray: #64748b;         
+            --border-gray: #e2e8f0;       
+            --bg-white: #ffffff;
+            --bg-gray: #f8fafc;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', Roboto, sans-serif;
+            background: var(--bg-gray);
+            margin: 0;
+            padding: 0;
+            color: var(--text-dark);
+        }
+        
+        /* ヘッダー */
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-gray);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            max-width: 95vw;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        /* タブナビゲーション */
+        .tab-navigation {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-gray);
+            overflow-x: auto;
+        }
+        
+        .tab-list {
+            max-width: 95vw;
+            margin: 0 auto;
+            display: flex;
+            gap: 0;
+            list-style: none;
+            padding: 0;
+            margin-bottom: 0;
+        }
+        
+        .tab-item {
+            position: relative;
+        }
+        
+        .tab-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-gray);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+        }
+        
+        .tab-button:hover {
+            color: var(--text-dark);
+            background: var(--bg-gray);
+        }
+        
+        .tab-button.active {
+            color: var(--primary-blue);
+            border-bottom-color: var(--primary-blue);
+        }
+        
+        /* メインコンテンツ */
+        .main-content {
+            max-width: 95vw;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .page-section {
+            display: none;
+        }
+        
+        .page-section.active {
+            display: block;
+        }
+        
+        /* ブレッドクラム */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            color: var(--text-gray);
+        }
+        
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .breadcrumb-separator {
+            color: var(--border-gray);
+        }
+        
+        /* ダッシュボード専用スタイル */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        
+        .dashboard-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .dashboard-card:hover {
+            border-color: var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .dashboard-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .dashboard-card-icon {
+            font-size: 24px;
+            width: 48px;
+            height: 48px;
+            background: var(--bg-blue);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .dashboard-card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0;
+        }
+        
+        .dashboard-card-description {
+            color: var(--text-gray);
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0;
+        }
+        
+        /* 統計カード */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        
+        .stat-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-gray);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-gray);
+            margin: 0;
+        }
+        
+        /* 共通コンポーネント */
+        .section {
+            background: var(--bg-white);
+            border: 1px solid var(--border-gray);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+            border: 1px solid var(--primary-blue);
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary-blue);
+            border-color: var(--secondary-blue);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-blue);
+            border: 1px solid var(--primary-blue);
+        }
+        
+        .btn-outline:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 16px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab-list {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                🏢 人材紹介システム
+            </div>
+            <div class="user-menu">
+                <span style="color: var(--text-gray); font-size: 14px;">管理者</span>
+                <div style="width: 32px; height: 32px; background: var(--primary-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">U</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- タブナビゲーション -->
+    <nav class="tab-navigation">
+        <ul class="tab-list">
+            <li class="tab-item">
+                <button class="tab-button active" data-tab="dashboard">
+                    🏠 ダッシュボード
+                </button>
+            </li>
+            <li class="tab-item">
+                <button class="tab-button" data-tab="job-seeker-form">
+                    👤 求職者管理
+                </button>
+            </li>
+            <li class="tab-item">
+                <button class="tab-button" data-tab="job-listings">
+                    📊 求人管理
+                </button>
+            </li>
+            <li class="tab-item">
+                <button class="tab-button" data-tab="matching">
+                    🎯 マッチング
+                </button>
+            </li>
+            <li class="tab-item">
+                <button class="tab-button" data-tab="analytics">
+                    📈 分析・レポート
+                </button>
+            </li>
+            
+        </ul>
+    </nav>
+
+    <!-- メインコンテンツ -->
+    <main class="main-content">
+        <!-- ブレッドクラム -->
+        <div class="breadcrumb" id="breadcrumb">
+            <div class="breadcrumb-item">
+                <span>🏠</span>
+                <span>ダッシュボード</span>
+            </div>
+        </div>
+
+        <!-- ダッシュボードセクション -->
+        <section id="dashboard-section" class="page-section active">
+            <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 32px 0; color: var(--text-dark);">
+                ダッシュボード
+            </h1>
+
+            <!-- 統計概要 -->
+            <div class="stats-overview">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalJobSeekers">0</div>
+                    <p class="stat-label">登録求職者数</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalJobs">0</div>
+                    <p class="stat-label">管理求人数</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="activeMatches">0</div>
+                    <p class="stat-label">進行中案件</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="successfulPlacements">0</div>
+                    <p class="stat-label">成約数</p>
+                </div>
+            </div>
+
+            <!-- 機能カード -->
+            <div class="dashboard-grid">
+                <div class="dashboard-card" onclick="switchTab('job-seeker-form')">
+                    <div class="dashboard-card-header">
+                        <div class="dashboard-card-icon">👤</div>
+                        <h3 class="dashboard-card-title">求職者登録</h3>
+                    </div>
+                    <p class="dashboard-card-description">
+                        転職希望者の詳細情報を登録し、希望条件や優先度を管理できます。履歴書・職務経歴書のアップロードにも対応。
+                    </p>
+                </div>
+
+                <div class="dashboard-card" onclick="switchTab('job-listings')">
+                    <div class="dashboard-card-header">
+                        <div class="dashboard-card-icon">📊</div>
+                        <h3 class="dashboard-card-title">AI求人管理</h3>
+                    </div>
+                    <p class="dashboard-card-description">
+                        PDFファイルからAIが自動で求人情報を抽出。担当者やステータス管理で効率的な求人データベースを構築。
+                    </p>
+                </div>
+
+                <div class="dashboard-card" onclick="switchTab('matching')">
+                    <div class="dashboard-card-header">
+                        <div class="dashboard-card-icon">🎯</div>
+                        <h3 class="dashboard-card-title">スマートマッチング</h3>
+                    </div>
+                    <p class="dashboard-card-description">
+                        求職者の条件と求人情報をAIが分析し、最適なマッチングを自動で提案します。
+                    </p>
+                </div>
+
+                <div class="dashboard-card" onclick="switchTab('analytics')">
+                    <div class="dashboard-card-header">
+                        <div class="dashboard-card-icon">📈</div>
+                        <h3 class="dashboard-card-title">分析・レポート</h3>
+                    </div>
+                    <p class="dashboard-card-description">
+                        成約率、応募状況、求人傾向などを分析し、ビジネス改善に役立つインサイトを提供します。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 最近のアクティビティ -->
+            <div class="section">
+                <h3 class="section-title">📋 最近のアクティビティ</h3>
+                <div id="recent-activities">
+                    <p style="color: var(--text-gray); text-align: center; padding: 40px;">
+                        アクティビティがまだありません。<br>
+                        求職者の登録や求人の追加を開始してください。
+                    </p>
+                </div>
+            </div>
+            
+        </section>
+
+        <!-- 求職者登録セクション -->
+        <section id="job-seeker-form-section" class="page-section">
+            <div style="margin-bottom: 24px;">
+                <button class="btn btn-outline" onclick="switchTab('dashboard')">
+                    ← ダッシュボードに戻る
+                </button>
+            </div>
+            
+            <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 32px 0; color: var(--text-dark);">
+                求職者管理
+            </h1>
+            
+            <div class="section">
+                <p style="margin-bottom: 12px; color: var(--text-gray);">
+                    求職者の一覧管理と登録ができます。
+                </p>
+                <div class="section-actions">
+                    <a href="job-seeker-form.html" class="btn btn-primary" target="_blank">📝 求職者登録システムを開く</a>
+                </div>
+            </div>
+
+            <!-- 登録済み求職者一覧（管理内） -->
+            <div class="section">
+                <div style="display:flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <h3 class="section-title" style="margin:0;">👤 登録済み求職者一覧</h3>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="seekerSearchDash" type="text" placeholder="🔎 氏名/メール/キーワード検索" class="btn" style="padding:8px 10px; border:1px solid var(--border-gray); background:#fff;">
+                        <button class="btn btn-outline" onclick="loadJobSeekersDash()">🔄 再読み込み</button>
+                    </div>
+                </div>
+                <div id="seekerMetaDash" style="margin-top:8px; color: var(--text-gray); font-size:13px;">読み込み待ち...</div>
+                <div style="overflow-x:auto; margin-top:10px;">
+                    <table class="table" style="min-width: 900px;">
+                        <thead>
+                            <tr>
+                                <th>氏名</th>
+                                <th>メール</th>
+                                <th>希望勤務地</th>
+                                <th>希望年収</th>
+                                <th>ステータス</th>
+                                <th>登録日</th>
+                            </tr>
+                        </thead>
+                        <tbody id="seekerTableBodyDash">
+                            <tr><td colspan="6" style="padding:12px; color: var(--text-gray);">読み込み中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 求人管理セクション -->
+        <section id="job-listings-section" class="page-section">
+            <div style="margin-bottom: 24px;">
+                <button class="btn btn-outline" onclick="switchTab('dashboard')">
+                    ← ダッシュボードに戻る
+                </button>
+            </div>
+            
+            <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 32px 0; color: var(--text-dark);">
+                AI求人管理システム
+            </h1>
+            
+            <div class="section">
+                <p style="margin-bottom: 12px; color: var(--text-gray);">
+                    求人の一覧管理とAI解析（Harmos）にアクセスできます。
+                </p>
+                <div class="section-actions">
+                    <a href="job-listing-manager-harmos.html" class="btn btn-outline" target="_blank">📊 求人管理システムを開く</a>
+                </div>
+            </div>
+
+            <!-- ページ内プレビュー埋め込み -->
+            <!-- ページ内プレビュー削除 -->
+
+            <!-- 登録済み求人一覧（管理内） -->
+            <div class="section">
+                <div style="display:flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <h3 class="section-title" style="margin:0;">📋 登録済み求人一覧</h3>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="jobSearchDash" type="text" placeholder="🔎 求人名/会社名/キーワード検索" class="btn" style="padding:8px 10px; border:1px solid var(--border-gray); background:#fff;">
+                        <button class="btn btn-outline" onclick="loadJobListingsDash()">🔄 再読み込み</button>
+                    </div>
+                </div>
+                <div id="jobMetaDash" style="margin-top:8px; color: var(--text-gray); font-size:13px;">読み込み待ち...</div>
+                <div class="table-container" style="margin-top:10px;">
+                    <table class="table" style="min-width: 1000px;">
+                        <thead>
+                            <tr>
+                                <th>求人名</th>
+                                <th>会社名</th>
+                                <th>勤務地</th>
+                                <th>年収</th>
+                                <th>ステータス</th>
+                                <th>登録日</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobTableBodyDash">
+                            <tr><td colspan="6" style="padding:12px; color: var(--text-gray);">読み込み中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- マッチングセクション -->
+        <section id="matching-section" class="page-section">
+            <div style="margin-bottom: 24px;">
+                <button class="btn btn-outline" onclick="switchTab('dashboard')">
+                    ← ダッシュボードに戻る
+                </button>
+            </div>
+            
+            <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 32px 0; color: var(--text-dark);">スマートマッチング</h1>
+
+            <!-- マッチング操作パネル -->
+            <div class="section">
+                <h3 class="section-title">🎯 求職者の条件に合う求人を検索</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: end;">
+                    <div>
+                        <label style="font-size: 13px; color: var(--text-gray);">求職者を選択</label>
+                        <select id="seekerSelect" class="btn" style="width: 100%; border: 1px solid var(--border-gray); background: white;">
+                            <option value="">読み込み中...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: var(--text-gray);">上位件数</label>
+                        <select id="topN" class="btn" style="width: 100%; border: 1px solid var(--border-gray); background: white;">
+                            <option>5</option>
+                            <option selected>10</option>
+                            <option>20</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: var(--text-gray);">最低一致数</label>
+                        <select id="minScore" class="btn" style="width: 100%; border: 1px solid var(--border-gray); background: white;">
+                            <option value="0">指定なし</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: var(--text-gray);">勤務地キーワード</label>
+                        <input id="locKeyword" class="btn" placeholder="例: 東京/大阪/リモート" style="width: 100%; border: 1px solid var(--border-gray); background: white;" />
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: var(--text-gray);">オプション</label>
+                        <div style="display:flex; gap: 12px; align-items:center;">
+                            <label style="display:flex; gap:6px; align-items:center; font-size: 14px; color: var(--text-gray);">
+                                <input type="checkbox" id="remoteOnly" /> リモートのみ
+                            </label>
+                        </div>
+                    </div>
+                    <div class="section-actions">
+                        <button class="btn btn-primary" onclick="runMatching()">🔎 マッチングを実行</button>
+                        <button class="btn btn-outline" onclick="initMatching()">🔄 データ再読み込み</button>
+                        <button class="btn btn-primary" onclick="saveSelectedApplications()">📥 応募管理に登録</button>
+                    </div>
+                </div>
+                <div id="matchingWarning" style="display:none; margin-top:12px; background:#fff4e5; border:1px solid #ffd8a8; color:#b26a00; padding:10px; border-radius:6px;">
+                    Google Sheets APIキーが未設定のため、データを読み込めません。API設定を行ってください。
+                </div>
+            </div>
+
+            <!-- マッチ結果 -->
+            <div class="section">
+                <h3 class="section-title">📋 マッチ結果</h3>
+                <div class="table-container">
+                    <table class="table" id="matchingTable" style="min-width: 1100px;">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">選択</th>
+                                <th style="width:110px;">一致数</th>
+                                <th style="width:220px;">求人名</th>
+                                <th style="width:160px;">会社名</th>
+                                <th style="width:140px;">年収</th>
+                                <th style="width:160px;">勤務地</th>
+                                <th>一致ポイント</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matchingBody">
+                            <tr><td colspan="6" style="color: var(--text-gray);">求職者を選択して「マッチングを実行」を押してください。</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 分析・レポートセクション -->
+        <section id="analytics-section" class="page-section">
+            <div style="margin-bottom: 24px;">
+                <button class="btn btn-outline" onclick="switchTab('dashboard')">
+                    ← ダッシュボードに戻る
+                </button>
+            </div>
+            
+            <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 32px 0; color: var(--text-dark);">
+                分析・レポート
+            </h1>
+            
+            <div class="section">
+                <h3 class="section-title">📈 ビジネス分析（開発予定）</h3>
+                <p style="color: var(--text-gray); margin-bottom: 24px;">
+                    データドリブンな意思決定をサポートする分析機能です。
+                </p>
+                
+                <div style="background: var(--bg-blue); padding: 20px; border-radius: 8px; margin: 16px 0;">
+                    <h4 style="margin: 0 0 12px 0; color: var(--primary-blue);">📊 予定機能</h4>
+                    <ul style="margin: 0; color: var(--text-gray);">
+                        <li>成約率・応募率の可視化</li>
+                        <li>求人市場トレンド分析</li>
+                        <li>担当者別パフォーマンス</li>
+                        <li>収益・売上レポート</li>
+                    </ul>
+                </div>
+                
+                <button class="btn btn-primary" onclick="alert('近日公開予定です！')">
+                    🔧 開発中...
+                </button>
+            </div>
+        </section>
+
+        <!-- 設定セクション -->
+        <section id="settings-section" class="page-section">
+            <div style="margin-bottom: 24px;">
+                <button class="btn btn-outline" onclick="switchTab('dashboard')">
+                    ← ダッシュボードに戻る
+                </button>
+            </div>
+
+            <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 32px 0; color: var(--text-dark);">API設定</h1>
+
+            <div class="section">
+                <p style="margin-bottom: 12px; color: var(--text-gray);">
+                    Google Sheets APIキー、OpenAI APIキー、GAS URL（任意）の設定を行います。
+                </p>
+                <div class="section-actions">
+                    <button class="btn btn-outline" onclick="toggleEmbed('apiSettingsEmbed','api-setup.html')">表示/非表示</button>
+                    <a href="api-setup.html" class="btn btn-primary" target="_blank">新しいタブで開く</a>
+                </div>
+                <div id="apiSettingsEmbed" style="display: none; margin-top: 12px;">
+                    <iframe id="apiSettingsIframe" src="" style="width: 100%; height: 900px; border: 1px solid var(--border-gray); border-radius: 8px;"></iframe>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // GAS連携（ダッシュボード用）
+        let gasConnector;
+        let formSubmitter;
+
+        // タブ切り替え機能
+        function switchTab(tabName) {
+            // すべてのタブボタンから active クラスを削除
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // すべてのページセクションを非表示にする
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // 選択されたタブボタンに active クラスを追加
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // 選択されたページセクションを表示
+            document.getElementById(`${tabName}-section`).classList.add('active');
+            
+            // ブレッドクラムを更新
+            updateBreadcrumb(tabName);
+            // 設定後に反映できるよう、マッチングタブ表示時に再初期化
+            if (tabName === 'matching') {
+                initMatching();
+            } else if (tabName === 'job-seeker-form') {
+                loadJobSeekersDash();
+            } else if (tabName === 'job-listings') {
+                if (typeof loadJobListingsDash === 'function') loadJobListingsDash();
+            } else if (tabName === 'dashboard') {
+                updateStats();
+            }
+        }
+
+        // 埋め込み表示切替（初回クリック時にsrc設定）
+        function toggleEmbed(containerId, src) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const iframe = container.querySelector('iframe');
+            const isHidden = container.style.display === 'none' || container.style.display === '';
+            if (isHidden) {
+                container.style.display = 'block';
+                if (iframe && !iframe.src) {
+                    iframe.src = src;
+                }
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        // ブレッドクラム更新
+        function updateBreadcrumb(tabName) {
+            const breadcrumb = document.getElementById('breadcrumb');
+            const tabNames = {
+                'dashboard': 'ダッシュボード',
+                'job-seeker-form': '求職者登録',
+                'job-listings': '求人管理',
+                'matching': 'マッチング',
+                'analytics': '分析・レポート'
+            };
+            
+            if (tabName === 'dashboard') {
+                breadcrumb.innerHTML = `
+                    <div class="breadcrumb-item">
+                        <span>🏠</span>
+                        <span>ダッシュボード</span>
+                    </div>
+                `;
+            } else {
+                breadcrumb.innerHTML = `
+                    <div class="breadcrumb-item">
+                        <span>🏠</span>
+                        <span style="cursor: pointer;" onclick="switchTab('dashboard')">ダッシュボード</span>
+                    </div>
+                    <span class="breadcrumb-separator">></span>
+                    <div class="breadcrumb-item">
+                        <span>${tabNames[tabName]}</span>
+                    </div>
+                `;
+            }
+        }
+
+        // タブボタンのクリックイベント
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.getAttribute('data-tab');
+                switchTab(tabName);
+            });
+        });
+
+        // 統計データの更新（GASのみ）
+        async function updateStats() {
+            try {
+                let stats = null;
+                if (typeof gasConnector !== 'undefined' && gasConnector) {
+                    try { stats = await gasConnector.getStatistics(); } catch (e) { console.warn('GAS統計取得失敗', e); }
+                }
+                if (!stats) stats = { totalJobSeekers: 0, totalJobListings: 0, totalApplications: 0, successfulPlacements: 0 };
+
+                document.getElementById('totalJobSeekers').textContent = stats.totalJobSeekers || '0';
+                document.getElementById('totalJobs').textContent = stats.totalJobListings || '0';
+                document.getElementById('activeMatches').textContent = stats.totalApplications || '0';
+                document.getElementById('successfulPlacements').textContent = stats.successfulPlacements || '0';
+                console.log('統計データを更新しました:', stats);
+            } catch (error) {
+                console.error('統計データ更新エラー:', error);
+                document.getElementById('totalJobSeekers').textContent = '0';
+                document.getElementById('totalJobs').textContent = '0';
+                document.getElementById('activeMatches').textContent = '0';
+                document.getElementById('successfulPlacements').textContent = '0';
+            }
+        }
+        
+        // 5分おきに統計を自動更新
+        function startAutoUpdate() {
+            // 初回実行
+            updateStats();
+            
+            // 5分(300000ms)おきに更新
+            setInterval(updateStats, 300000);
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // GAS初期化（先に行うことで初回の統計にも反映される）
+            const GAS_URL = (typeof GASUtils !== 'undefined') ? GASUtils.getGASUrl() : (typeof CONFIG !== 'undefined' ? CONFIG.GAS_URL : '');
+            if (GAS_URL) {
+                gasConnector = new GASConnector(GAS_URL);
+                formSubmitter = new GASFormSubmitter(GAS_URL);
+                console.log('GAS連携を初期化:', GAS_URL);
+            } else {
+                console.warn('GAS URL が未設定です。API設定で上書き可能です。');
+            }
+            // 5分おき自動更新を開始（初回実行でGAS値を表示）
+            startAutoUpdate();
+            
+            // 最近のアクティビティを動的に生成（サンプル）
+            setTimeout(() => {
+                const activities = document.getElementById('recent-activities');
+                activities.innerHTML = `
+                    <div style="border-left: 3px solid var(--primary-blue); padding-left: 16px; margin-bottom: 16px;">
+                        <div style="font-weight: 500; color: var(--text-dark);">新しい求職者が登録されました</div>
+                        <div style="font-size: 12px; color: var(--text-gray); margin-top: 4px;">2時間前</div>
+                    </div>
+                    <div style="border-left: 3px solid var(--success); padding-left: 16px; margin-bottom: 16px;">
+                        <div style="font-weight: 500; color: var(--text-dark);">求人「Webデザイナー」の応募がありました</div>
+                        <div style="font-size: 12px; color: var(--text-gray); margin-top: 4px;">5時間前</div>
+                    </div>
+                    <div style="border-left: 3px solid var(--warning); padding-left: 16px;">
+                        <div style="font-weight: 500; color: var(--text-dark);">AIで3件の求人を自動登録しました</div>
+                        <div style="font-size: 12px; color: var(--text-gray); margin-top: 4px;">1日前</div>
+                    </div>
+                `;
+            }, 1000);
+            // マッチング初期データ読み込み
+            initMatching();
+        });
+
+        // ===== 求職者一覧（ダッシュボード） =====
+        let SEEKERS_CACHE_DASH = [];
+        function pickDash(obj, keys) {
+            for (const k of keys) {
+                if (obj && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return obj[k];
+            }
+            return '';
+        }
+        function parseDateDash(val) {
+            if (!val) return null;
+            try {
+                if (Object.prototype.toString.call(val) === '[object Date]') return val;
+                const d = new Date(val);
+                return isNaN(d.getTime()) ? null : d;
+            } catch (_) { return null; }
+        }
+        async function loadJobSeekersDash() {
+            const meta = document.getElementById('seekerMetaDash');
+            const tbody = document.getElementById('seekerTableBodyDash');
+            if (!meta || !tbody) return;
+            try {
+                meta.textContent = 'GASから読み込み中...';
+                if (!window.gasConnector) {
+                    const GAS_URL = (typeof GASUtils !== 'undefined') ? GASUtils.getGASUrl() : (typeof CONFIG !== 'undefined' ? CONFIG.GAS_URL : '');
+                    if (GAS_URL) window.gasConnector = new GASConnector(GAS_URL);
+                }
+                let list = [];
+                if (window.gasConnector) {
+                    try { list = await window.gasConnector.getJobSeekers(); } catch (e) { console.warn('GAS取得失敗', e); }
+                }
+                if (!Array.isArray(list)) list = [];
+                list.sort((a, b) => {
+                    const da = parseDateDash(pickDash(a, ['登録日時','登録日','作成日','created','timestamp']));
+                    const db = parseDateDash(pickDash(b, ['登録日時','登録日','作成日','created','timestamp']));
+                    return (db?.getTime()||0) - (da?.getTime()||0);
+                });
+                SEEKERS_CACHE_DASH = list;
+                renderSeekerTableDash();
+            } catch (err) {
+                console.error('求職者一覧ダッシュボード読み込みエラー:', err);
+                meta.textContent = '読み込みに失敗しました: ' + (err.message || err);
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px; color:#c00;">読み込みに失敗しました</td></tr>';
+            }
+        }
+        function renderSeekerTableDash() {
+            const meta = document.getElementById('seekerMetaDash');
+            const tbody = document.getElementById('seekerTableBodyDash');
+            if (!meta || !tbody) return;
+            const q = (document.getElementById('seekerSearchDash').value || '').trim().toLowerCase();
+            let rows = SEEKERS_CACHE_DASH;
+            if (q) rows = rows.filter(o => JSON.stringify(o).toLowerCase().includes(q));
+            meta.textContent = `表示件数: ${rows.length} / 総件数: ${SEEKERS_CACHE_DASH.length}`;
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px; color: var(--text-gray);">データがありません</td></tr>';
+                return;
+            }
+            const html = rows.slice(0, 50).map(o => {
+                const name = pickDash(o, ['氏名','name']);
+                const email = pickDash(o, ['メールアドレス','email']);
+                const loc = pickDash(o, ['希望勤務地','desiredLocation']);
+                const sal = pickDash(o, ['希望年収','desiredSalary']);
+                const status = pickDash(o, ['ステータス','status']);
+                const d = pickDash(o, ['登録日時','登録日','作成日','created','timestamp']);
+                return `
+                    <tr>
+                        <td>${name || '-'}</td>
+                        <td>${email || '-'}</td>
+                        <td>${loc || '-'}</td>
+                        <td>${sal || '-'}</td>
+                        <td>${status || '-'}</td>
+                        <td>${d ? new Date(d).toLocaleString() : '-'}</td>
+                    </tr>`;
+            }).join('');
+            tbody.innerHTML = html;
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('seekerSearchDash');
+            if (input) input.addEventListener('input', renderSeekerTableDash);
+        });
+
+        // ===== 求人一覧（ダッシュボード：求人管理内） =====
+        let JOBS_CACHE_DASH = [];
+        function salaryTextDash(job) {
+            const s = (job['年収'] || '').toString().trim();
+            if (s) return s;
+            const min = job['salaryMin'] || '';
+            const max = job['salaryMax'] || '';
+            return (min || max) ? `${min || ''}${(min||max?'-':'')}${max || ''}` : '';
+        }
+        async function loadJobListingsDash() {
+            const meta = document.getElementById('jobMetaDash');
+            const tbody = document.getElementById('jobTableBodyDash');
+            if (!meta || !tbody) return;
+            try {
+                meta.textContent = 'GASから読み込み中...';
+                if (!window.gasConnector) {
+                    const GAS_URL = (typeof GASUtils !== 'undefined') ? GASUtils.getGASUrl() : (typeof CONFIG !== 'undefined' ? CONFIG.GAS_URL : '');
+                    if (GAS_URL) window.gasConnector = new GASConnector(GAS_URL);
+                }
+                let list = [];
+                if (window.gasConnector) {
+                    try { list = await window.gasConnector.getJobListings(); } catch (e) { console.warn('GAS取得失敗', e); }
+                }
+                if (!Array.isArray(list)) list = [];
+                list.sort((a,b) => {
+                    const da = parseDateDash(pickDash(a, ['登録日時','登録日','作成日','created','timestamp']));
+                    const db = parseDateDash(pickDash(b, ['登録日時','登録日','作成日','created','timestamp']));
+                    return (db?.getTime()||0) - (da?.getTime()||0);
+                });
+                JOBS_CACHE_DASH = list;
+                renderJobListingsDash();
+            } catch (err) {
+                console.error('求人一覧ダッシュボード読み込みエラー:', err);
+                meta.textContent = '読み込みに失敗しました: ' + (err.message || err);
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px; color:#c00;">読み込みに失敗しました</td></tr>';
+            }
+        }
+        function renderJobListingsDash() {
+            const meta = document.getElementById('jobMetaDash');
+            const tbody = document.getElementById('jobTableBodyDash');
+            if (!meta || !tbody) return;
+            const q = (document.getElementById('jobSearchDash').value || '').trim().toLowerCase();
+            let rows = JOBS_CACHE_DASH;
+            if (q) rows = rows.filter(o => JSON.stringify(o).toLowerCase().includes(q));
+            meta.textContent = `表示件数: ${rows.length} / 総件数: ${JOBS_CACHE_DASH.length}`;
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:12px; color: var(--text-gray);">データがありません</td></tr>';
+                return;
+            }
+            const html = rows.slice(0, 50).map(o => {
+                const title = pickDash(o, ['求人名','title']);
+                const company = pickDash(o, ['会社名','company']);
+                const loc = pickDash(o, ['勤務地','location']);
+                const sal = salaryTextDash(o);
+                const status = pickDash(o, ['ステータス','status']);
+                const d = pickDash(o, ['登録日時','登録日','作成日','created','timestamp']);
+                return `
+                    <tr>
+                        <td>${title || '-'}</td>
+                        <td>${company || '-'}</td>
+                        <td>${loc || '-'}</td>
+                        <td>${sal || '-'}</td>
+                        <td>${status || '-'}</td>
+                        <td>${d ? new Date(d).toLocaleString() : '-'}</td>
+                    </tr>`;
+            }).join('');
+            tbody.innerHTML = html;
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const input2 = document.getElementById('jobSearchDash');
+            if (input2) input2.addEventListener('input', renderJobListingsDash);
+        });
+
+        // ===== スマートマッチング（読み込みはGoogle Sheets APIを使用） =====
+
+        let seekersData = [];
+        let jobsData = [];
+
+        let lastMatched = [];
+
+        async function initMatching() {
+            try {
+                // まずGASからの取得を試す
+                let seekers = [], jobs = [];
+                let usedGAS = false;
+                if (gasConnector) {
+                    try {
+                        GASUtils && GASUtils.showProgress && GASUtils.showProgress('GASからデータ取得中...');
+                        [seekers, jobs] = await Promise.all([
+                            gasConnector.getJobSeekers(),
+                            gasConnector.getJobListings()
+                        ]);
+                        // 期待する配列形式か検証
+                        if (Array.isArray(seekers) && Array.isArray(jobs)) {
+                            usedGAS = true;
+                        } else {
+                            console.warn('GAS応答が配列ではありません。Sheets APIにフォールバックします。');
+                            usedGAS = false;
+                        }
+                    } catch (e) {
+                        console.warn('GASからの取得に失敗、Sheets APIにフォールバック:', e);
+                    }
+                }
+
+                if (!usedGAS) {
+                    // 本番運用ではGAS経由のみを使用（フォールバック無効）
+                    document.getElementById('matchingWarning').style.display = 'block';
+                    const sel = document.getElementById('seekerSelect');
+                    if (sel) sel.innerHTML = '<option value="">GAS未接続</option>';
+                    GASUtils && GASUtils.hideProgress && GASUtils.hideProgress();
+                    return;
+                }
+
+                seekersData = seekers;
+                jobsData = jobs;
+
+                populateSeekerSelect(seekersData);
+                GASUtils && GASUtils.showProgress && GASUtils.showProgress('データ取得が完了しました！');
+                setTimeout(() => GASUtils && GASUtils.hideProgress && GASUtils.hideProgress(), 800);
+            } catch (error) {
+                console.error('マッチング初期化エラー:', error);
+                document.getElementById('matchingWarning').style.display = 'block';
+                GASUtils && GASUtils.showProgress && GASUtils.showProgress('エラー: データ取得に失敗しました');
+                setTimeout(() => GASUtils && GASUtils.hideProgress && GASUtils.hideProgress(), 2000);
+            }
+        }
+
+        // GAS固定運用のため、localStorage設定の監視は不要
+
+        function toObjects(headers, rows) {
+            return rows.map(r => {
+                const o = {}; headers.forEach((h, i) => o[h] = r[i]); return o;
+            });
+        }
+
+        function populateSeekerSelect(list) {
+            const sel = document.getElementById('seekerSelect');
+            sel.innerHTML = '<option value="">求職者を選択</option>';
+            list.forEach((s, idx) => {
+                const name = s['氏名'] || s['name'] || `求職者${idx+1}`;
+                const email = s['メールアドレス'] || s['email'] || '';
+                const opt = document.createElement('option');
+                opt.value = String(idx);
+                opt.textContent = `${name}${email ? ' / ' + email : ''}`;
+                sel.appendChild(opt);
+            });
+        }
+
+        function runMatching() {
+            const idx = document.getElementById('seekerSelect').value;
+            const topN = parseInt(document.getElementById('topN').value, 10) || 10;
+            const minScore = parseInt(document.getElementById('minScore').value, 10) || 0;
+            const remoteOnly = document.getElementById('remoteOnly').checked;
+            const locKw = (document.getElementById('locKeyword').value || '').trim();
+            if (idx === '' || !seekersData.length || !jobsData.length) return;
+            const seeker = seekersData[Number(idx)];
+            let scored = jobsData
+                .map(job => {
+                    const score = computeScore(seeker, job);
+                    const reasons = matchReasons(seeker, job);
+                    const remoteHit = reasons.includes('リモート');
+                    const jLoc = (job['勤務地'] || job['location'] || '').toString();
+                    const locHit = locKw ? jLoc.includes(locKw) : true;
+                    return { job, score, reasons, remoteHit, locHit };
+                })
+                .filter(x => x.score >= minScore && x.locHit && (!remoteOnly || x.remoteHit))
+                .sort((a,b) => b.score - a.score)
+                .slice(0, topN);
+            renderMatches(scored);
+        }
+
+        function parseSalary(s) {
+            if (!s) return {min:null, max:null};
+            const m = String(s).replace(/[,円万円]/g,'');
+            const parts = m.split('-').map(x => parseInt(x,10)).filter(n => !isNaN(n));
+            if (parts.length === 1) return {min:parts[0], max:parts[0]};
+            if (parts.length >= 2) return {min:parts[0], max:parts[1]};
+            return {min:null, max:null};
+        }
+
+        function norm(str) { return String(str||'').toLowerCase().replace(/\s+/g,''); }
+        function includesAny(text, keywords) {
+            const t = norm(text);
+            return keywords.some(k => t.includes(norm(k)));
+        }
+
+        // 単純加点版（各条件1点）
+        function computeScore(seeker, job) {
+            const { matches } = evaluateMatches(seeker, job);
+            // 1条件=1点で合計
+            return Object.values(matches).reduce((acc, v) => acc + (v ? 1 : 0), 0);
+        }
+
+        function evaluateMatches(seeker, job) {
+            const sLoc = (seeker['希望勤務地'] || seeker['desiredLocation'] || '').trim();
+            const sLocDetail = (seeker['詳細希望地域'] || seeker['specificCity'] || '').trim();
+            const jLoc = (job['勤務地'] || job['location'] || '').trim();
+
+            const sSal = parseSalary(seeker['希望年収'] || seeker['desiredSalary']);
+            const jSal = parseSalary(job['年収'] || (job['salaryMin'] && job['salaryMax'] ? `${job['salaryMin']}-${job['salaryMax']}` : ''));
+
+            const sWeekend = String(seeker['土日休み希望'] || '').includes('あり');
+            const jWeekend = String(job['土日休み'] || '').includes('あり');
+
+            const sH = parseInt(String(seeker['年間休日希望']||'').replace(/[^0-9]/g,''),10);
+            const jH = parseInt(String(job['年間休日']||'').replace(/[^0-9]/g,''),10);
+
+            const sReqList = (seeker['応募条件'] || seeker['requirements'] || '').split(/[、,\s]+/).filter(Boolean);
+            const jReqText = (job['応募条件'] || job['requirements'] || '').toString();
+
+            // 追加のよくある条件
+            const sEmp = (seeker['雇用形態'] || seeker['employmentType'] || '').trim();
+            const jEmp = (job['雇用形態'] || job['employmentType'] || '').trim();
+            const seekerWantsRemote = includesAny(sLoc + ' ' + sLocDetail + ' ' + sReqList.join(' '), ['リモート','在宅','フルリモート']);
+            const jobIsRemote = includesAny(jLoc + ' ' + (job['備考']||job['notes']||''), ['リモート','在宅','フルリモート']);
+            const sRole = (seeker['希望職種'] || seeker['jobTypes'] || '').toString();
+            const jRoleText = (job['職種'] || job['求人名'] || job['title'] || '').toString();
+
+            const matches = {
+                location: !!(sLoc && jLoc && jLoc.includes(sLoc)) || (!!sLocDetail && jLoc.includes(sLocDetail)),
+                salary: !!(sSal.min && jSal.max && jSal.max >= sSal.min),
+                weekendOff: sWeekend && jWeekend,
+                annualHolidays: (!isNaN(sH) && !isNaN(jH) && jH >= sH),
+                requirements: sReqList.length > 0 && sReqList.some(k => jReqText.includes(k)),
+                employmentType: !!(sEmp && jEmp && (jEmp.includes(sEmp) || sEmp.includes(jEmp))),
+                remote: seekerWantsRemote ? jobIsRemote : false,
+                role: !!(sRole && jRoleText && includesAny(jRoleText, Array.isArray(sRole)? sRole : String(sRole).split(/[、,\s]+/)))
+            };
+
+            return { matches };
+        }
+
+        function matchReasons(seeker, job) {
+            const { matches } = evaluateMatches(seeker, job);
+            const reasons = [];
+            if (matches.location) reasons.push('勤務地');
+            if (matches.salary) reasons.push('年収');
+            if (matches.weekendOff) reasons.push('土日休み');
+            if (matches.annualHolidays) reasons.push('年間休日');
+            if (matches.requirements) reasons.push('応募条件');
+            if (matches.employmentType) reasons.push('雇用形態');
+            if (matches.remote) reasons.push('リモート');
+            if (matches.role) reasons.push('職種');
+            return reasons;
+        }
+
+        function renderMatches(items) {
+            const tbody = document.getElementById('matchingBody');
+            tbody.innerHTML = '';
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="color: var(--text-gray);">一致する求人が見つかりませんでした。</td></tr>';
+                return;
+            }
+            const total = 8; // 条件数
+            lastMatched = items;
+            items.forEach(({job, score, reasons}, idx) => {
+                const tr = document.createElement('tr');
+                const salary = job['年収'] || (job['salaryMin'] && job['salaryMax'] ? `${job['salaryMin']}-${job['salaryMax']}` : '');
+                const chips = reasons.map(r => `<span style="display:inline-block; padding:2px 6px; margin:2px; border:1px solid #e2e8f0; border-radius:12px; font-size:11px; background:#f8fafc;">${r}</span>`).join('');
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="match-select" data-index="${idx}" /></td>
+                    <td><strong>${score}</strong> / ${total}</td>
+                    <td>${job['求人名'] || job['title'] || ''}</td>
+                    <td>${job['会社名'] || job['company'] || ''}</td>
+                    <td>${salary}</td>
+                    <td>${job['勤務地'] || job['location'] || ''}</td>
+                    <td>${chips}</td>
+                `;
+                // 詳細行（クリックで展開）
+                const details = document.createElement('tr');
+                details.style.display = 'none';
+                const detailsTd = document.createElement('td');
+                detailsTd.colSpan = 6;
+                detailsTd.style.background = '#f8fafc';
+                detailsTd.style.borderLeft = '3px solid #2563eb';
+                const jobReq = job['応募条件'] || job['requirements'] || '';
+                const jobNotes = job['備考'] || job['notes'] || '';
+                detailsTd.innerHTML = `
+                    <div style="padding:12px;">
+                        <div style="font-size:13px; color:#64748b; margin-bottom:6px;">詳細</div>
+                        ${jobReq ? `<div><strong>応募条件:</strong> ${jobReq}</div>` : ''}
+                        ${jobNotes ? `<div style="margin-top:6px;"><strong>備考:</strong> ${jobNotes}</div>` : ''}
+                    </div>
+                `;
+                details.appendChild(detailsTd);
+
+                tr.style.cursor = 'pointer';
+                tr.addEventListener('click', () => {
+                    details.style.display = details.style.display === 'none' ? '' : 'none';
+                });
+
+                tbody.appendChild(tr);
+                tbody.appendChild(details);
+            });
+        }
+
+        async function saveSelectedApplications() {
+            try {
+                const idx = document.getElementById('seekerSelect').value;
+                if (idx === '' || !seekersData.length) {
+                    alert('求職者を選択してください。');
+                    return;
+                }
+                const seeker = seekersData[Number(idx)];
+                const seekerName = seeker['氏名'] || seeker['name'] || '';
+                const checks = Array.from(document.querySelectorAll('.match-select:checked'));
+                if (checks.length === 0) {
+                    alert('登録する求人を選択してください。');
+                    return;
+                }
+
+                if (!gasConnector || !formSubmitter) {
+                    alert('GAS連携が未設定です。API設定でGAS URLを設定してください。');
+                    return;
+                }
+
+                GASUtils && GASUtils.showProgress && GASUtils.showProgress('応募管理に登録中...');
+                let ok = 0, ng = 0;
+                for (const c of checks) {
+                    const i = Number(c.getAttribute('data-index'));
+                    const item = lastMatched[i];
+                    if (!item) { ng++; continue; }
+                    const job = item.job;
+                    const payload = {
+                        jobSeekerName: seekerName,
+                        jobTitle: job['求人名'] || job['title'] || '',
+                        company: job['会社名'] || job['company'] || '',
+                        status: '候補'
+                    };
+                    try {
+                        try {
+                            await gasConnector.upsertApplication(payload);
+                        } catch (e) {
+                            await formSubmitter.submitData('upsertApplication', payload);
+                        }
+                        ok++;
+                    } catch (e) {
+                        console.warn('登録失敗:', e);
+                        ng++;
+                    }
+                }
+                alert(`応募管理に登録しました: 成功 ${ok}件 / 失敗 ${ng}件`);
+                GASUtils && GASUtils.showProgress && GASUtils.showProgress('登録が完了しました');
+            } catch (e) {
+                console.error('応募管理登録エラー:', e);
+                alert('登録に失敗しました: ' + (e.message || e));
+            }
+        }
+    </script>
+</body>
+</html>

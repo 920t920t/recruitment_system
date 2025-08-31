@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API設定 - 人材紹介システム</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: #f8fafc; }
+    .container { max-width: 800px; margin: 24px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; }
+    h1 { margin: 0 0 16px; font-size: 24px; }
+    .section { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0; background: #fff; }
+    .section h3 { margin: 0 0 12px; font-size: 16px; }
+    label { display: block; font-size: 13px; color: #64748b; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+    .btn { padding: 10px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; cursor: pointer; }
+    .btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .btn-danger { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .muted { color: #64748b; font-size: 12px; margin-top: 6px; }
+    .status { margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 14px; display: none; }
+    .ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .warn { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+    .err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    a.link { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-actions">
+      <h1>🔧 API設定</h1>
+      <div class="actions">
+        <a class="link" href="index-dashboard.html">📊 ダッシュボードへ</a>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>🗝️ Google Sheets API キー</h3>
+      <div class="row">
+        <div>
+          <label>APIキー（ブラウザに保存されます）</label>
+          <input id="sheetsKey" type="password" placeholder="AIza..." />
+          <div class="muted">キーは localStorage に保存され、読み書き時に使用されます。</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="saveSheetsKey()">保存</button>
+          <button class="btn" onclick="clearSheetsKey()">クリア</button>
+        </div>
+      </div>
+      <div id="sheetsStatus" class="status"></div>
+    </div>
+
+    <div class="section">
+      <h3>🤖 OpenAI API キー（AI抽出用）</h3>
+      <div class="row">
+        <div>
+          <label>APIキー（ブラウザに保存されます）</label>
+          <input id="openaiKey" type="password" placeholder="sk-... or sk-proj-..." />
+          <div class="muted">AI求人抽出（Harmos版）で使用します。</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="saveOpenAIKey()">保存</button>
+          <button class="btn" onclick="clearOpenAIKey()">クリア</button>
+        </div>
+      </div>
+      <div id="openaiStatus" class="status"></div>
+    </div>
+
+    <div class="section">
+      <h3>🧩 GAS URL（上書き設定・任意）</h3>
+      <div class="row">
+        <div>
+          <label>GAS WebアプリURLを上書き（任意）</label>
+          <input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/xxxx/exec" />
+          <div class="muted">設定すると、CONFIG.GAS_URL よりこちらが優先されます。</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="saveGasUrl()">保存</button>
+          <button class="btn" onclick="clearGasUrl()">クリア</button>
+          <button class="btn" onclick="testGas()">接続テスト</button>
+        </div>
+      </div>
+      <div id="gasStatus" class="status"></div>
+    </div>
+
+    <div class="section">
+      <h3>🧹 リセット</h3>
+      <div class="actions">
+        <button class="btn btn-danger" onclick="resetAll()">すべての設定を消去</button>
+      </div>
+      <div class="muted">localStorage の保存内容（3つのキー）を削除します。</div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="gas-connector.js"></script>
+  <script>
+    // 初期表示
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        const sheetsKey = localStorage.getItem('google_sheets_api_key') || '';
+        const openaiKey = localStorage.getItem('openai_api_key') || '';
+        const gasUrl = localStorage.getItem('gas_url_override') || '';
+        document.getElementById('sheetsKey').value = sheetsKey;
+        document.getElementById('openaiKey').value = openaiKey;
+        document.getElementById('gasUrl').value = gasUrl;
+      } catch (_) {}
+    });
+
+    // UI helpers
+    function showStatus(id, msg, cls) {
+      const el = document.getElementById(id);
+      el.className = 'status ' + cls;
+      el.textContent = msg;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    // Sheets API Key
+    function saveSheetsKey() {
+      const v = document.getElementById('sheetsKey').value.trim();
+      localStorage.setItem('google_sheets_api_key', v);
+      showStatus('sheetsStatus', 'Google Sheets APIキーを保存しました。', 'ok');
+    }
+    function clearSheetsKey() {
+      localStorage.removeItem('google_sheets_api_key');
+      document.getElementById('sheetsKey').value = '';
+      showStatus('sheetsStatus', 'Google Sheets APIキーを削除しました。', 'warn');
+    }
+
+    // OpenAI API Key
+    function saveOpenAIKey() {
+      const v = document.getElementById('openaiKey').value.trim();
+      localStorage.setItem('openai_api_key', v);
+      showStatus('openaiStatus', 'OpenAI APIキーを保存しました。', 'ok');
+    }
+    function clearOpenAIKey() {
+      localStorage.removeItem('openai_api_key');
+      document.getElementById('openaiKey').value = '';
+      showStatus('openaiStatus', 'OpenAI APIキーを削除しました。', 'warn');
+    }
+
+    // GAS URL
+    function saveGasUrl() {
+      const v = document.getElementById('gasUrl').value.trim();
+      if (v && !/^https?:\/\//.test(v)) {
+        showStatus('gasStatus', 'URLの形式が正しくありません。', 'err');
+        return;
+      }
+      localStorage.setItem('gas_url_override', v);
+      showStatus('gasStatus', 'GAS URLを保存しました。', 'ok');
+    }
+    function clearGasUrl() {
+      localStorage.removeItem('gas_url_override');
+      document.getElementById('gasUrl').value = '';
+      showStatus('gasStatus', 'GAS URLを削除しました。', 'warn');
+    }
+
+    async function testGas() {
+      try {
+        const url = GASUtils.getGASUrl();
+        if (!url) {
+          showStatus('gasStatus', 'GAS URLが未設定です。CONFIGまたは上書きを設定してください。', 'warn');
+          return;
+        }
+        const connector = new GASConnector(url);
+        const result = await connector.getStatistics();
+        showStatus('gasStatus', `接続成功: 求職者 ${result.totalJobSeekers} / 求人 ${result.totalJobListings}`, 'ok');
+      } catch (e) {
+        showStatus('gasStatus', '接続失敗: ' + (e.message || e), 'err');
+      }
+    }
+
+    function resetAll() {
+      ['google_sheets_api_key','openai_api_key','gas_url_override'].forEach(k => localStorage.removeItem(k));
+      document.getElementById('sheetsKey').value = '';
+      document.getElementById('openaiKey').value = '';
+      document.getElementById('gasUrl').value = '';
+      showStatus('sheetsStatus', '全設定をリセットしました。', 'warn');
+    }
+  </script>
+</body>
+</html>
+
